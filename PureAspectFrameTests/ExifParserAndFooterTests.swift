@@ -37,7 +37,6 @@ struct ExifParserAndFooterTests {
     // MARK: - FooterItem Tests
     @Test func testFooterItemOrderingAndUsageFilter() {
         // Default items in bottom bar: camera, lens, parameters, logo
-        let allItems = FooterItemType.allCases
         let activeItems: [FooterItemType] = [.logo, .camera]
         
         // Available items should only include unused items

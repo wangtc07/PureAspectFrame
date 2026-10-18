@@ -156,6 +156,11 @@ public struct BorderTabView: View {
                         
                         // 自訂
                         Button {
+                            if case let .customHSB(h, s, b) = backgroundMode {
+                                customH = h
+                                customS = s
+                                customB = b
+                            }
                             showingHSBPicker = true
                         } label: {
                             HStack {
@@ -244,6 +249,15 @@ public struct BorderTabView: View {
         }
         .sheet(isPresented: $showingHSBPicker) {
             HSBColorPickerView(hue: $customH, saturation: $customS, brightness: $customB)
+                .onChange(of: customH) { _, newH in
+                    backgroundMode = .customHSB(hue: newH, saturation: customS, brightness: customB)
+                }
+                .onChange(of: customS) { _, newS in
+                    backgroundMode = .customHSB(hue: customH, saturation: newS, brightness: customB)
+                }
+                .onChange(of: customB) { _, newB in
+                    backgroundMode = .customHSB(hue: customH, saturation: customS, brightness: newB)
+                }
                 .onDisappear {
                     backgroundMode = .customHSB(hue: customH, saturation: customS, brightness: customB)
                 }

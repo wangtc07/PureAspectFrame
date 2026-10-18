@@ -89,4 +89,89 @@ public final class ColorSpaceService: Sendable {
         
         return mutableData as Data
     }
+    
+    // MARK: - 色彩格式轉換 (HSB / RGB / Hex)
+    
+    /// 將 RGB (0.0 ~ 1.0) 轉換為 Hex 字串 (例如 "#1C1C1E")
+    public static func rgbToHex(r: Double, g: Double, b: Double) -> String {
+        let redInt = Int((min(max(r, 0.0), 1.0) * 255.0).rounded())
+        let greenInt = Int((min(max(g, 0.0), 1.0) * 255.0).rounded())
+        let blueInt = Int((min(max(b, 0.0), 1.0) * 255.0).rounded())
+        return String(format: "#%02X%02X%02X", redInt, greenInt, blueInt)
+    }
+    
+    /// 將 Hex 字串轉換為 RGB (0.0 ~ 1.0)，失敗返回 nil
+    public static func hexToRgb(_ hex: String) -> (r: Double, g: Double, b: Double)? {
+        var cleanHex = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if cleanHex.hasPrefix("#") {
+            cleanHex.removeFirst()
+        }
+        guard cleanHex.count == 6 else { return nil }
+        
+        var rgbValue: UInt64 = 0
+        guard Scanner(string: cleanHex).scanHexInt64(&rgbValue) else { return nil }
+        
+        let r = Double((rgbValue & 0xFF0000) >> 16) / 255.0
+        let g = Double((rgbValue & 0x00FF00) >> 8) / 255.0
+        let b = Double(rgbValue & 0x0000FF) / 255.0
+        return (r: r, g: g, b: b)
+    }
+    
+    /// 將 RGB (0.0 ~ 1.0) 轉換為 HSB (0.0 ~ 1.0)
+    public static func rgbToHsb(r: Double, g: Double, b: Double) -> (h: Double, s: Double, b: Double) {
+        let maxVal = max(r, g, b)
+        let minVal = min(r, g, b)
+        let delta = maxVal - minVal
+        
+        var h: Double = 0
+        if delta > 1e-5 {
+            if maxVal == r {
+                h = (g - b) / delta
+                if h < 0 { h += 6.0 }
+            } else if maxVal == g {
+                h = ((b - r) / delta) + 2.0
+            } else {
+                h = ((r - g) / delta) + 4.0
+            }
+            h /= 6.0
+        }
+        
+        let s: Double = maxVal > 1e-5 ? (delta / maxVal) : 0
+        let brightness: Double = maxVal
+        return (h: h, s: s, b: brightness)
+    }
+    
+    /// 將 HSB (0.0 ~ 1.0) 轉換為 RGB (0.0 ~ 1.0)
+    public static func hsbToRgb(h: Double, s: Double, b: Double) -> (r: Double, g: Double, b: Double) {
+        if s < 1e-5 {
+            return (r: b, g: b, b: b)
+        }
+        let hSector = (h.truncatingRemainder(dividingBy: 1.0) + (h < 0 ? 1.0 : 0)) * 6.0
+        let sectorIndex = Int(floor(hSector)) % 6
+        let f = hSector - Double(sectorIndex)
+        let p = b * (1.0 - s)
+        let q = b * (1.0 - s * f)
+        let t = b * (1.0 - s * (1.0 - f))
+        
+        switch sectorIndex {
+        case 0: return (r: b, g: t, b: p)
+        case 1: return (r: q, g: b, b: p)
+        case 2: return (r: p, g: b, b: t)
+        case 3: return (r: p, g: q, b: b)
+        case 4: return (r: t, g: p, b: b)
+        default: return (r: b, g: p, b: q)
+        }
+    }
+    
+    /// 將 Hex 字串轉換為 HSB (0.0 ~ 1.0)，失敗返回 nil
+    public static func hexToHsb(_ hex: String) -> (h: Double, s: Double, b: Double)? {
+        guard let rgb = hexToRgb(hex) else { return nil }
+        return rgbToHsb(r: rgb.r, g: rgb.g, b: rgb.b)
+    }
+    
+    /// 將 HSB (0.0 ~ 1.0) 轉換為 Hex 字串
+    public static func hsbToHex(h: Double, s: Double, b: Double) -> String {
+        let rgb = hsbToRgb(h: h, s: s, b: b)
+        return rgbToHex(r: rgb.r, g: rgb.g, b: rgb.b)
+    }
 }

@@ -60,4 +60,32 @@ struct ExifAndStorageTests {
         #expect(StoragePolicy.fullImage.description.contains("保留輸出圖片"))
         #expect(StoragePolicy.settingsOnly.description.contains("僅保留設定"))
     }
+
+    // MARK: - Color Conversion Tests
+    @Test func testColorConversionsBetweenHSBRGBAndHex() {
+        // 1. 測試 #1C1C1E
+        let hex1 = "#1C1C1E"
+        guard let rgb1 = ColorSpaceService.hexToRgb(hex1) else {
+            Issue.record("無法解析 hex1")
+            return
+        }
+        #expect(Int((rgb1.r * 255).rounded()) == 28)
+        #expect(Int((rgb1.g * 255).rounded()) == 28)
+        #expect(Int((rgb1.b * 255).rounded()) == 30)
+        
+        let roundHex1 = ColorSpaceService.rgbToHex(r: rgb1.r, g: rgb1.g, b: rgb1.b)
+        #expect(roundHex1 == hex1)
+
+        // 2. 測試純紅色 #FF0000 轉 HSB
+        let redHex = "#FF0000"
+        let redHsb = ColorSpaceService.hexToHsb(redHex)
+        #expect(redHsb != nil)
+        #expect(redHsb?.h == 0.0)
+        #expect(redHsb?.s == 1.0)
+        #expect(redHsb?.b == 1.0)
+
+        // 3. 測試無效 Hex
+        #expect(ColorSpaceService.hexToRgb("INVALID") == nil)
+        #expect(ColorSpaceService.hexToRgb("#123") == nil)
+    }
 }

@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import CoreGraphics
 import SwiftData
+import SwiftUI
 @testable import PureAspectFrame
 
 @MainActor
@@ -144,4 +145,23 @@ struct UIWorkflowTests {
             #expect(icon.isSelected == true)
         }
     }
+
+    @Test func testHSBColorPickerViewComponents() {
+        var h: Double = 0.5
+        var s: Double = 0.8
+        var b: Double = 0.9
+        
+        let bindingH = Binding(get: { h }, set: { h = $0 })
+        let bindingS = Binding(get: { s }, set: { s = $0 })
+        let bindingB = Binding(get: { b }, set: { b = $0 })
+        
+        let _ = HSBColorPickerView(hue: bindingH, saturation: bindingS, brightness: bindingB)
+        let _ = GradientSlider(value: bindingH, gradientColors: [.red, .blue])
+        let _ = SliderDirectValueInput(value: bindingH, range: 0...360, suffix: "°")
+        
+        #expect(h == 0.5)
+        #expect(s == 0.8)
+        #expect(b == 0.9)
+    }
 }
+
