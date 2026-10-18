@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import PhotosUI
+import Photos
 
 /// 主頁視圖（遵循 ChekiLens 與 iOS 26 原生 Liquid Glass 設計語言）
 public struct HomeView: View {
@@ -11,6 +12,10 @@ public struct HomeView: View {
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var loadedCGImage: CGImage? = DemoImageProvider.makeDemoImage()
     @State private var loadedExif: ExifMetadata = DemoImageProvider.demoExif
+    
+    // 漸進式載入與提示狀態
+    @State private var isImportingPhoto: Bool = false
+    @State private var importStatusText: String = ""
     
     // 導航目的地
     private enum HomeSheet: Identifiable {
@@ -40,6 +45,27 @@ public struct HomeView: View {
             
             // 2. 頂部懸浮透明玻璃工具列（完全移除「作品」與「PureAspect...」標題，移除「全部/已存圖」切換）
             topFloatingHeaderBar
+            
+            // 3. 漸進式導入提示浮動膠囊（Liquid Glass 風格）
+            if isImportingPhoto {
+                VStack {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                            .controlSize(.regular)
+                        Text(importStatusText)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .liquidGlassCapsule(height: 44, horizontalPadding: 20, ink: .primary)
+                    .padding(.top, 64)
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isImportingPhoto)
+                .zIndex(100)
+            }
         }
         .safeAreaInset(edge: .bottom) {
             bottomActionFloatingBar
@@ -49,30 +75,91 @@ public struct HomeView: View {
             case .settings:
                 SettingsView()
             case .quickImport:
-                if let cgImg = loadedCGImage {
-                    QuickImportView(sourceImage: cgImg, exifMetadata: loadedExif)
-                }
+                QuickImportView(
+                    sourceImage: Binding(
+                        get: { loadedCGImage ?? DemoImageProvider.makeDemoImage() },
+                        set: { loadedCGImage = $0 }
+                    ),
+                    exifMetadata: loadedExif
+                )
             }
         }
         .fullScreenCover(isPresented: $showingFullEditor) {
-            if let cgImg = loadedCGImage {
-                EditorView(sourceImage: cgImg, initialExif: loadedExif)
-            }
+            EditorView(
+                sourceImage: Binding(
+                    get: { loadedCGImage ?? DemoImageProvider.makeDemoImage() },
+                    set: { loadedCGImage = $0 }
+                ),
+                initialExif: loadedExif
+            )
         }
         .onChange(of: selectedPhotoItem) { _, newItem in
             guard let item = newItem else { return }
+            isImportingPhoto = true
+            importStatusText = "正在載入相片預覽..."
+            
             Task {
-                if let data = try? await item.loadTransferable(type: Data.self) {
-                    loadedExif = ExifParserService.parse(imageData: data)
-                    if let uiImage = UIImage(data: data), let cg = uiImage.cgImage {
-                        loadedCGImage = cg
-                        if isQuickImportMode {
-                            activeSheet = .quickImport
-                        } else {
-                            showingFullEditor = true
+                var previewLoaded = false
+                
+                // 1. 若可獲取 PhotoKit 本機快取，嘗試直接取得即時低畫質/縮圖（通常 <10ms，無需等待 iCloud）
+                if let localId = item.itemIdentifier {
+                    let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: [localId], options: nil)
+                    if let asset = fetchResult.firstObject {
+                        let options = PHImageRequestOptions()
+                        options.deliveryMode = .fastFormat
+                        options.isNetworkAccessAllowed = false
+                        options.isSynchronous = false
+                        
+                        PHImageManager.default().requestImage(
+                            for: asset,
+                            targetSize: CGSize(width: 1600, height: 1600),
+                            contentMode: .aspectFit,
+                            options: options
+                        ) { uiImage, _ in
+                            guard let uiImage = uiImage, !previewLoaded else { return }
+                            if let data = uiImage.jpegData(compressionQuality: 0.8),
+                               let cg = ImageDecodingService.createOrientedCGImage(from: data, maxPixelSize: 1600) {
+                                Task { @MainActor in
+                                    guard !previewLoaded else { return }
+                                    previewLoaded = true
+                                    loadedCGImage = cg
+                                    if isQuickImportMode {
+                                        activeSheet = .quickImport
+                                    } else {
+                                        showingFullEditor = true
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+                
+                // 2. 異步下載完整相片 Data（支援 iCloud 異步下載）
+                importStatusText = "正在下載高畫質原圖..."
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    let exif = ExifParserService.parse(imageData: data)
+                    loadedExif = exif
+                    
+                    // 若前一步未能取得快取縮圖，先以 ImageIO 硬體降採樣生成 1600px 快速圖
+                    if !previewLoaded {
+                        if let fastCG = ImageDecodingService.createOrientedCGImage(from: data, maxPixelSize: 1600) {
+                            previewLoaded = true
+                            loadedCGImage = fastCG
+                            if isQuickImportMode {
+                                activeSheet = .quickImport
+                            } else {
+                                showingFullEditor = true
+                            }
+                        }
+                    }
+                    
+                    // 3. 在背景生成無損完整解析度轉正 CGImage 並無縫升級為原圖
+                    if let fullCG = ImageDecodingService.createOrientedCGImage(from: data, maxPixelSize: nil) {
+                        loadedCGImage = fullCG
+                    }
+                }
+                
+                isImportingPhoto = false
                 selectedPhotoItem = nil
             }
         }
@@ -253,7 +340,7 @@ public struct HomeView: View {
     private var bottomButtonsContent: some View {
         HStack(spacing: ChromeMetrics.groupSpacing) {
             // 快速導入按鈕（透明液態玻璃膠囊）
-            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+            PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
                 HStack(spacing: 8) {
                     Image(systemName: "bolt.fill")
                         .font(.system(size: ChromeMetrics.iconPointSize, weight: .semibold))
@@ -267,7 +354,7 @@ public struct HomeView: View {
             .simultaneousGesture(TapGesture().onEnded { isQuickImportMode = true })
             
             // 自訂編輯按鈕（透明液態玻璃膠囊）
-            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+            PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
                 HStack(spacing: 8) {
                     Image(systemName: "plus")
                         .font(.system(size: ChromeMetrics.iconPointSize, weight: .bold))

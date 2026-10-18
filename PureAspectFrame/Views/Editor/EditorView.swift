@@ -3,7 +3,7 @@ import SwiftData
 
 /// 編輯器核心視圖（上下獨立分割佈局、Liquid Glass 導航與控制面板）
 public struct EditorView: View {
-    var sourceImage: CGImage
+    @Binding var sourceImage: CGImage
     var initialExif: ExifMetadata
     
     // 當前編輯狀態
@@ -48,8 +48,14 @@ public struct EditorView: View {
         }
     }
     
+    public init(sourceImage: Binding<CGImage>, initialExif: ExifMetadata = ExifMetadata()) {
+        self._sourceImage = sourceImage
+        self.initialExif = initialExif
+        self._exifMetadata = State(initialValue: initialExif)
+    }
+    
     public init(sourceImage: CGImage, initialExif: ExifMetadata = ExifMetadata()) {
-        self.sourceImage = sourceImage
+        self._sourceImage = .constant(sourceImage)
         self.initialExif = initialExif
         self._exifMetadata = State(initialValue: initialExif)
     }

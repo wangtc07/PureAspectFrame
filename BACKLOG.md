@@ -21,12 +21,14 @@ PureAspectFrame 開發任務清單
 │   ├── [x] 1.2 實作 ImageIO EXIF / TIFF / MakerNote 解析服務 (相機品牌、型號、鏡頭、焦距、光圈、快門、ISO、日期)
 │   ├── [x] 1.3 實作手動老鏡設備庫與模板儲存模型 (SwiftData: 支援選擇與新增鏡頭、儲存與套用自訂模板)
 │   ├── [x] 1.4 實作雙模式儲存管理：「保留輸出圖片」與「僅保留設定」(PHAsset ID / Security-Scoped Bookmark 參照與即時重繪)
-│   └── [x] 1.5 實作色彩空間自動轉換 (Display P3 -> sRGB) 與 EXIF/ICC 元資料無損寫回管線
+│   ├── [x] 1.5 實作色彩空間自動轉換 (Display P3 -> sRGB) 與 EXIF/ICC 元資料無損寫回管線
+│   └── [x] 1.6 實作 ImageIO EXIF Orientation 幾何轉正與硬體加速降採樣服務 (ImageDecodingService)
 │
 ├── [x] Phase 2: 主頁面与快速導入流程 (Home & Quick Import)
 │   ├── [x] 2.1 實作 Liquid Glass 風格主頁面：歷史輸出作品網格、已存圖/僅設定篩選與空間統計
 │   ├── [x] 2.2 實作設定頁面：預設儲存策略切換（存圖 vs. 僅存設定）、手動鏡頭庫管理
-│   └── [x] 2.3 實作「快速導入」流程：選取照片後套用預設/已存模板 → 免顯示編輯欄直接預覽 → 確定後直接導出
+│   ├── [x] 2.3 實作「快速導入」流程：選取照片後套用預設/已存模板 → 免顯示編輯欄直接預覽 → 確定後直接導出
+│   └── [x] 2.4 實作漸進式相片載入與 iCloud 下載進度提示 (PhotoKit 本機快取即時預覽 + 背景完整解析度無縫切換)
 │
 ├── [x] Phase 3: 畫布比例、內外比例與手勢裁切 (Ratio & Interactive Canvas)
 │   ├── [x] 3.1 實作外部比例選擇列（IG 4:5、1:1、小紅書 3:4、9:16、16:9，並將拍立得 Mini / Square / Wide 併入一般比例選項）

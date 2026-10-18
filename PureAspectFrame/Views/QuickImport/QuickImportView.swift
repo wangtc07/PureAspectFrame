@@ -4,7 +4,7 @@ import PhotosUI
 
 /// 快速導入模式視圖（選取照片後直接套用模板預覽，免顯示複雜編輯面板，一鍵快速導出）
 public struct QuickImportView: View {
-    var sourceImage: CGImage
+    @Binding var sourceImage: CGImage
     var exifMetadata: ExifMetadata
     
     @Query private var savedTemplates: [FrameTemplate]
@@ -17,8 +17,13 @@ public struct QuickImportView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     
+    public init(sourceImage: Binding<CGImage>, exifMetadata: ExifMetadata) {
+        self._sourceImage = sourceImage
+        self.exifMetadata = exifMetadata
+    }
+    
     public init(sourceImage: CGImage, exifMetadata: ExifMetadata) {
-        self.sourceImage = sourceImage
+        self._sourceImage = .constant(sourceImage)
         self.exifMetadata = exifMetadata
     }
     
@@ -119,7 +124,7 @@ public struct QuickImportView: View {
                 }
             }
             .fullScreenCover(isPresented: $showingFullEditor) {
-                EditorView(sourceImage: sourceImage, initialExif: exifMetadata)
+                EditorView(sourceImage: $sourceImage, initialExif: exifMetadata)
             }
             .sheet(isPresented: $showingShareSheet) {
                 ShareActivityView(activityItems: exportItems)
