@@ -89,46 +89,24 @@ public struct QuickImportView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 
-                // 底部雙按鈕：「進階編輯」與「一鍵導出」
-                HStack(spacing: 12) {
-                    Button {
-                        showingFullEditor = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "slider.horizontal.3")
-                            Text("進階微調")
+                Group {
+                    if #available(iOS 26.0, *) {
+                        GlassEffectContainer(spacing: 12) {
+                            quickImportBottomButtons(
+                                ratio: activeRatio,
+                                border: activeBorder,
+                                background: activeBackground,
+                                footer: activeFooter
+                            )
                         }
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: ChromeMetrics.capsuleHeight)
-                        .background {
-                            RoundedRectangle(cornerRadius: ChromeMetrics.capsuleHeight / 2.0, style: .continuous)
-                                .fill(Color.primary.opacity(0.08))
-                        }
-                        .foregroundStyle(Color.primary)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Button {
-                        performQuickExport(
+                    } else {
+                        quickImportBottomButtons(
                             ratio: activeRatio,
                             border: activeBorder,
                             background: activeBackground,
                             footer: activeFooter
                         )
-                    } label: {
-                        HStack {
-                            Image(systemName: "square.and.arrow.up")
-                            Text("直接導出")
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: ChromeMetrics.capsuleHeight)
-                        .background {
-                            RoundedRectangle(cornerRadius: ChromeMetrics.capsuleHeight / 2.0, style: .continuous)
-                                .fill(Color.accentColor)
-                        }
-                        .foregroundStyle(Color.white)
                     }
-                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
@@ -146,6 +124,48 @@ public struct QuickImportView: View {
             .sheet(isPresented: $showingShareSheet) {
                 ShareActivityView(activityItems: exportItems)
             }
+        }
+    }
+    
+    private func quickImportBottomButtons(
+        ratio: CanvasRatio,
+        border: BorderSettings,
+        background: BackgroundMode,
+        footer: FooterSettings
+    ) -> some View {
+        HStack(spacing: ChromeMetrics.groupSpacing) {
+            Button {
+                showingFullEditor = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: ChromeMetrics.iconPointSize, weight: .semibold))
+                    Text("進階微調")
+                        .font(.headline)
+                }
+                .frame(maxWidth: .infinity)
+                .liquidGlassCapsule(height: ChromeMetrics.capsuleHeight, ink: .primary)
+            }
+            .buttonStyle(.plain)
+            
+            Button {
+                performQuickExport(
+                    ratio: ratio,
+                    border: border,
+                    background: background,
+                    footer: footer
+                )
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: ChromeMetrics.iconPointSize, weight: .semibold))
+                    Text("直接導出")
+                        .font(.headline.bold())
+                }
+                .frame(maxWidth: .infinity)
+                .liquidGlassCapsule(height: ChromeMetrics.capsuleHeight, ink: .primary)
+            }
+            .buttonStyle(.plain)
         }
     }
     
