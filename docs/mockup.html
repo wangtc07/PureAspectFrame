@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PureAspectFrame v2 — Liquid Glass Mockup</title>
+<script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+<style>
+  .no-sb::-webkit-scrollbar{display:none}.no-sb{scrollbar-width:none}
+
+  /* 預設隨系統 prefers-color-scheme 自動切換純白 / 深色背景，不採用漸層 */
+  .phone {
+    --app-bg: #f5f5f7;
+    --app-fg: #1d1d1f;
+    --app-muted: rgba(29, 29, 31, 0.62);
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-strong-bg: rgba(255, 255, 255, 0.88);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --glass-highlight: rgba(255, 255, 255, 0.9);
+    --glass-shadow: rgba(0, 0, 0, 0.08);
+    --btn-bg: rgba(0, 0, 0, 0.05);
+    --btn-border: rgba(0, 0, 0, 0.12);
+    --btn-on-bg: #1d1d1f;
+    --btn-on-fg: #ffffff;
+    --edge-idle: rgba(0, 0, 0, 0.18);
+    --edge-active: #007aff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .phone:not([data-theme="light"]) {
+      --app-bg: #121214;
+      --app-fg: #f5f5f7;
+      --app-muted: rgba(245, 245, 247, 0.65);
+      --glass-bg: rgba(38, 38, 42, 0.72);
+      --glass-strong-bg: rgba(54, 54, 60, 0.82);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --glass-highlight: rgba(255, 255, 255, 0.28);
+      --glass-shadow: rgba(0, 0, 0, 0.35);
+      --btn-bg: rgba(255, 255, 255, 0.1);
+      --btn-border: rgba(255, 255, 255, 0.18);
+      --btn-on-bg: #ffffff;
+      --btn-on-fg: #121214;
+      --edge-idle: rgba(255, 255, 255, 0.25);
+      --edge-active: #007aff;
+    }
+  }
+
+  .phone[data-theme="dark"] {
+    --app-bg: #121214;
+    --app-fg: #f5f5f7;
+    --app-muted: rgba(245, 245, 247, 0.65);
+    --glass-bg: rgba(38, 38, 42, 0.72);
+    --glass-strong-bg: rgba(54, 54, 60, 0.82);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-highlight: rgba(255, 255, 255, 0.28);
+    --glass-shadow: rgba(0, 0, 0, 0.35);
+    --btn-bg: rgba(255, 255, 255, 0.1);
+    --btn-border: rgba(255, 255, 255, 0.18);
+    --btn-on-bg: #ffffff;
+    --btn-on-fg: #121214;
+    --edge-idle: rgba(255, 255, 255, 0.25);
+    --edge-active: #007aff;
+  }
+
+  .phone {
+    width: 390px;
+    height: 800px;
+    border-radius: 48px;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--app-bg);
+    color: var(--app-fg);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.28), inset 0 0 0 1px var(--glass-border);
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  /* iOS 26 Liquid Glass 透明毛玻璃材質 */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-highlight), 0 8px 24px var(--glass-shadow);
+    color: var(--app-fg);
+  }
+  .glass-strong {
+    background: var(--glass-strong-bg);
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    border: 1px solid var(--glass-border);
+  }
+  .pill { border-radius: 999px; }
+  .gbtn {
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 999px;
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
+    color: var(--app-fg);
+    white-space: nowrap;
+    transition: all 0.15s ease;
+  }
+  .gbtn.on {
+    background: var(--btn-on-bg);
+    color: var(--btn-on-fg);
+    font-weight: 600;
+    border-color: transparent;
+  }
+  .gbtn[disabled] { opacity: 0.35; pointer-events: none; }
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column; }
+  .screen.show { display: flex; }
+
+  /* 範例照片素材 */
+  .ph {
+    background-image: url('https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80');
+    background-size: cover;
+    background-position: center;
+  }
+  .ph.b { background-image: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80'); }
+  .ph.c { background-image: url('https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=600&q=80'); }
+  .ph.d { background-image: url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=80'); }
+
+  .chip {
+    padding: 2px 7px;
+    border: 1.5px dashed rgba(120, 120, 128, 0.65);
+    border-radius: 6px;
+    font: 11px ui-monospace, monospace;
+    cursor: grab;
+    background: rgba(255, 255, 255, 0.78);
+    color: #111;
+    white-space: nowrap;
+  }
+  .chip.pal {
+    padding: 4px 9px;
+    font-size: 12px;
+    border-color: var(--glass-border);
+    color: var(--app-fg);
+    background: var(--btn-bg);
+  }
+  .chip.warn { border-color: #f59e0b; }
+  .dragover { outline: 2px dashed #007aff; outline-offset: 2px; }
+  input[type=range] { accent-color: #007aff; height: 4px; }
+  .numin {
+    width: 56px;
+    text-align: right;
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
+    border-radius: 8px;
+    color: var(--app-fg);
+    font-size: 13px;
+    padding: 2px 6px;
+  }
+  .muted { color: var(--app-muted); }
+
+  /* 預覽區四邊距離標籤樣式 */
+  .dist-badge {
+    position: absolute;
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font: 600 11px ui-monospace, monospace;
+    background: rgba(28, 28, 30, 0.78);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.22);
+    transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+  }
+  .dist-badge.sel {
+    background: #007aff;
+    color: #fff;
+    border-color: #ffffff;
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.45), 0 2px 8px rgba(0,0,0,0.25);
+  }
+  .dist-badge.linked:not(.sel) {
+    border-color: #60a5fa;
+  }
+  .dist-input {
+    width: 38px;
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    border: none;
+    outline: none;
+    border-radius: 4px;
+    text-align: center;
+    font: 600 11px ui-monospace, monospace;
+    padding: 0 2px;
+  }
+
+  /* 底部編輯面板：採用 Flex 高度過渡，與上方預覽區絕不重疊 */
+  #panel {
+    height: 356px;
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: height 0.32s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  #panel.hide {
+    height: 32px;
+  }
+</style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] min-h-screen flex flex-col items-center gap-3 p-4">
+
+<!-- 頂部畫面與主題測試切換列 -->
+<div class="flex gap-2 flex-wrap justify-center items-center text-sm">
+  <button class="gbtn on" style="--btn-on-bg:#007aff;--btn-on-fg:#fff;--btn-bg:rgba(128,128,128,.15);--btn-border:rgba(128,128,128,.25);--app-fg:inherit" data-go="home">① 主頁</button>
+  <button class="gbtn" style="--btn-on-bg:#007aff;--btn-on-fg:#fff;--btn-bg:rgba(128,128,128,.15);--btn-border:rgba(128,128,128,.25);--app-fg:inherit" data-go="quick">② 快速導入</button>
+  <button class="gbtn" style="--btn-on-bg:#007aff;--btn-on-fg:#fff;--btn-bg:rgba(128,128,128,.15);--btn-border:rgba(128,128,128,.25);--app-fg:inherit" data-go="editor">③ 編輯器</button>
+  <button class="gbtn" style="--btn-on-bg:#007aff;--btn-on-fg:#fff;--btn-bg:rgba(128,128,128,.15);--btn-border:rgba(128,128,128,.25);--app-fg:inherit" data-go="preview">④ 發佈預覽</button>
+  <span class="text-xs opacity-60 ml-2">外觀：</span>
+  <select id="themeSel" onchange="setTheme(this.value)" class="text-xs px-2.5 py-1 rounded-full bg-neutral-500/15 border border-neutral-500/30">
+    <option value="system">跟隨系統 (System)</option>
+    <option value="light">淺色 (純白背景)</option>
+    <option value="dark">深色 (純黑背景)</option>
+  </select>
+</div>
+
+<div class="phone" id="phoneRoot">
+
+  <!-- ① 主頁 -->
+  <section id="home" class="screen show">
+    <div class="pt-12 px-5 flex items-center justify-between">
+      <h1 class="text-2xl font-bold">作品</h1>
+      <div class="flex gap-2">
+        <button class="gbtn glass" onclick="go('quick')">＋ 導入</button>
+      </div>
+    </div>
+    <div class="px-5 mt-3 flex gap-2 text-xs">
+      <div class="glass pill px-3 py-1.5">已存圖 12 張 · 86 MB</div>
+      <div class="glass pill px-3 py-1.5">僅設定 31 筆 · 0.3 MB</div>
+    </div>
+    <div class="px-5 mt-3 flex gap-2">
+      <button class="gbtn on">全部</button>
+      <button class="gbtn">已存圖</button>
+      <button class="gbtn">僅設定</button>
+    </div>
+    <div class="flex-1 overflow-y-auto no-sb px-5 mt-3 pb-24 grid grid-cols-2 gap-3 content-start" id="grid"></div>
+    <div class="absolute bottom-4 inset-x-4 glass pill px-4 py-3 flex justify-around text-sm">
+      <span class="font-semibold">作品</span>
+      <span class="muted cursor-pointer" onclick="go('editor')">模板</span>
+      <span class="muted cursor-pointer" onclick="alert('設定：\n1. 預設保留輸出圖片\n2. 僅保留設定（記錄原圖位置與套用參數，節省空間）')">設定</span>
+    </div>
+  </section>
+
+  <!-- ② 快速導入 -->
+  <section id="quick" class="screen">
+    <div class="pt-12 px-5 flex items-center justify-between">
+      <button class="gbtn glass" onclick="go('home')">‹ 返回</button>
+      <div class="font-semibold">快速導入 · 3 張</div>
+      <div class="w-14"></div>
+    </div>
+    <div class="px-5 mt-4 text-xs muted">選擇預設模板，直接預覽後導出（不開啟編輯介面）</div>
+    <div class="px-5 mt-2 flex gap-2 overflow-x-auto no-sb" id="tplRow"></div>
+    <div class="flex-1 flex items-center justify-center p-4 min-h-0">
+      <div id="quickCanvas" class="bg-white border border-black/10" style="width:220px;aspect-ratio:4/5;padding:14px 14px 40px;position:relative">
+        <div class="ph w-full h-full"></div>
+        <div class="absolute bottom-3 inset-x-0 text-center text-xs text-neutral-700 font-mono">SONY / α7R V · 50mm f/1.4</div>
+      </div>
+    </div>
+    <div class="px-5 pb-6 flex gap-3">
+      <button class="gbtn glass flex-1 py-3" onclick="go('editor')">進階編輯</button>
+      <button class="gbtn on flex-1 py-3" onclick="exportPick()">確定並導出</button>
+    </div>
+  </section>
+
+  <!-- ③ 編輯器（上下 Flex 分割：上方預覽區完整顯示全圖，絕不與下方編輯面板重疊） -->
+  <section id="editor" class="screen">
+    <!-- 頂部工具列 -->
+    <div class="pt-10 pb-2 px-4 flex items-center justify-between gap-2 z-20 flex-shrink-0">
+      <button class="gbtn glass" onclick="go('home')">‹</button>
+      <div class="flex gap-2">
+        <button class="gbtn glass" onclick="tplMenu()">▣ 模板</button>
+        <button class="gbtn glass" onclick="go('preview')">◉ 預覽</button>
+        <button class="gbtn on" onclick="exportPick()">導出</button>
+      </div>
+    </div>
+
+    <!-- 上方預覽區：獨立佔據面板上方所有剩餘空間，完整顯示整張畫布 -->
+    <div id="stage" class="flex-1 min-h-0 flex items-center justify-center relative px-4 py-2 overflow-hidden" onclick="onStageClick(event)">
+      <div id="canvas" class="relative overflow-hidden border border-black/15 dark:border-white/15 transition-all duration-250 cursor-pointer" style="width:260px;height:325px" title="點選白框顯示四邊距離，點選照片調整位置"></div>
+      <div id="zoomHud" class="absolute top-2 glass pill px-3 py-1 text-xs hidden z-30 pointer-events-none"></div>
+    </div>
+
+    <!-- 下方 Liquid Glass 編輯面板（非重疊式，收合時僅留 32px 箭頭列，讓上方預覽區自動放大） -->
+    <div id="panel" class="glass rounded-t-[32px] pt-1 pb-5 z-10 border-b-0 flex flex-col">
+      <button class="mx-auto block w-16 h-6 text-center leading-5 muted flex-shrink-0" onclick="togglePanel()" id="arrow" title="收合/展開編輯面板">⌄</button>
+      <div class="grid grid-cols-4 gap-1 mx-4 p-1 pill glass-strong text-sm flex-shrink-0" id="tabs">
+        <button data-t="ratio" class="gbtn on">比例</button>
+        <button data-t="border" class="gbtn">邊框</button>
+        <button data-t="footer" class="gbtn">底欄</button>
+        <button data-t="split" class="gbtn">切割</button>
+      </div>
+      <div class="px-4 pt-3 overflow-y-auto no-sb text-sm flex-1 min-h-0" id="tabBody"></div>
+    </div>
+  </section>
+
+  <!-- ④ 發佈預覽 -->
+  <section id="preview" class="screen">
+    <div class="pt-12 px-4 flex items-center justify-between">
+      <button class="gbtn glass" onclick="go('editor')">‹ 編輯</button>
+      <div class="font-semibold">發佈預覽</div>
+      <div class="w-16"></div>
+    </div>
+    <div class="px-4 mt-3 flex gap-2 overflow-x-auto no-sb" id="platRow"></div>
+    <div class="flex-1 overflow-y-auto no-sb px-4 mt-3 pb-8">
+      <div class="rounded-3xl glass p-3" id="feed"></div>
+      <div class="text-xs muted mt-2 px-1">※ 直接預覽實際發佈之圓角與多圖切割間隙效果。</div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+function setTheme(mode) {
+  const root = $('#phoneRoot');
+  if (mode === 'system') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', mode);
+  render();
+}
+
+function go(id){
+  $$('.screen').forEach(e=>e.classList.toggle('show',e.id===id));
+  $$('[data-go]').forEach(b=>b.classList.toggle('on',b.dataset.go===id));
+  if(id==='preview')renderFeed();
+  if(id==='editor')render();
+}
+$$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
+
+/* ---------- 主頁 ---------- */
+const works=[
+  ['ph','4:5','IG 白邊','pic'],
+  ['ph b','1:1','拍立得 Square','cfg'],
+  ['ph c','3:4','小紅書','pic'],
+  ['ph d','4:5','Threads 3分割','cfg'],
+  ['ph b','4:5','IG 白邊','cfg'],
+  ['ph','1:1','黑邊','pic']
+];
+$('#grid').innerHTML=works.map(w=>`<div class="glass rounded-2xl p-2"><div class="${w[0]} rounded-xl" style="aspect-ratio:${w[1].replace(':','/')}"></div>
+ <div class="mt-2 flex items-center justify-between text-xs"><span>${w[2]}</span><span class="pill px-2 py-0.5 border border-current/20 text-xs">${w[3]==='pic'?'已存圖':'僅設定'}</span></div></div>`).join('');
+
+/* ---------- 模板 / 快速導入 ---------- */
+const tpls=['IG 白邊 4:5','拍立得 Mini','黑邊 1:1','Threads 左右切割'];
+$('#tplRow').innerHTML=tpls.map((t,i)=>`<button class="gbtn ${i?'':'on'}" onclick="pickTpl(this)">${t}</button>`).join('');
+function pickTpl(b){
+  $$('#tplRow .gbtn').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  const q=$('#quickCanvas');
+  const t=b.textContent;
+  q.style.background=t.includes('黑')?'#111':'#fff';
+  q.style.aspectRatio=t.includes('Mini')?'54/86':t.includes('1:1')?'1/1':'4/5';
+  q.style.padding=t.includes('Mini')?'10px 10px 46px':'14px 14px 40px';
+}
+function exportPick(){alert('導出完成：\n依設定儲存輸出圖片，或僅儲存設定參照（節省空間）。');}
+function tplMenu(){alert('模板管理：\n・儲存目前設定為新模板\n・套用：IG 白邊 4:5\n・套用：拍立得 Mini\n・套用：Threads 橫圖切割');}
+
+/* ---------- 編輯器狀態 ---------- */
+const S={
+  outer:[4,5],
+  inner:'free',
+  zero:false,
+  bg:'white',
+  hsb:[210,40,90],
+  blur:40,
+  pad:{t:6,r:6,b:14,l:6},
+  /*
+   * 邊框連結與選取邏輯：
+   * - linkedGroup: 已連結的邊集合（例如 ['t','l','r']）。取消「🔗 連結」編輯模式後依然保留！
+   * - linkEditMode: 是否正處於「🔗 連結」加選/減選編輯模式。
+   * - sel: 當前被選擇要同時調整的邊。
+   *   當 linkEditMode=false 時：若點選某邊 k 且 k 屬於 linkedGroup（且群組 >=2 邊），則 linkedGroup 內所有邊同時被選中 (S.sel = [...S.linkedGroup]) 並同步調整；
+   *   若點選不在 linkedGroup 的邊（例如 'b'），則僅選中 ['b'] 單獨調整，不破壞原本已連結的 ['t','l','r']！
+   */
+  linkedGroup:['t','l','r'],
+  linkEditMode:false,
+  sel:['t','l','r'],
+  unit:'pct',
+  rad:0,
+  radUnit:'pct',
+  chips:['brand','model','lens'],
+  zoom:1,
+  px:0,
+  py:0,
+  adjust:false,
+  showEdgeDist:false,
+  editingEdge:null,
+  splitOn:false,
+  splitCount:2,
+  gap:8,
+  lens:'Helios 44M-5 58mm f/2'
+};
+const EDGE_NAMES={t:'上',b:'下',l:'左',r:'右'};
+const CHIPS={brand:'SONY',model:'α7R V',lens:'Lens',focal:'50mm',ap:'f/1.4',sh:'1/500s',iso:'ISO 100',date:'2026.10.18'};
+const OUTER=[['IG 4:5',4,5],['1:1',1,1],['小紅書 3:4',3,4],['9:16',9,16],['16:9',16,9],['拍立得 Mini',54,86],['拍立得 Square',72,86],['拍立得 Wide',108,86]];
+const INNER=[['自由','free'],['1:1','1/1'],['4:5','4/5'],['3:2','3/2'],['16:9','16/9']];
+let tab='ratio';
+
+function bgCss(){
+  if(S.bg==='white')return'#ffffff';
+  if(S.bg==='black')return'#111111';
+  if(S.bg==='custom'){
+    const[h,s,b]=S.hsb;
+    const l=b/100*(1-s/200);
+    const sl=(b*s/100)/(1-Math.abs(2*l-1))||0;
+    return`hsl(${h} ${Math.min(100,sl)}% ${l*100}%)`;
+  }
+  return'#888888';
+}
+
+function formatEdgeVal(k){
+  const v = S.pad[k];
+  return S.unit==='px' ? `${px(v)}px` : `${(+v).toFixed(1).replace(/\.0$/,'')}%`;
+}
+
+function updateHud(){
+  const hud = $('#zoomHud');
+  if (S.adjust) {
+    hud.textContent = '照片調整：拖曳平移 · 滾輪/雙指縮放 · 點外框切換邊距';
+    hud.classList.remove('hidden');
+  } else if (S.showEdgeDist) {
+    const selNames = S.sel.map(k=>EDGE_NAMES[k]).join('、');
+    hud.textContent = `邊距顯示中（已選：${selNames}）· 點選數字可直接輸入修改`;
+    hud.classList.remove('hidden');
+  } else {
+    hud.classList.add('hidden');
+  }
+}
+
+function render(){
+  const c=$('#canvas');
+  const panelHidden = $('#panel').classList.contains('hide');
+  const maxW = 346;
+  const maxH = panelHidden ? 660 : 340;
+  const ar = S.outer[0] / S.outer[1];
+  let cw = maxW;
+  let ch = cw / ar;
+  if (ch > maxH) {
+    ch = maxH;
+    cw = ch * ar;
+  }
+  c.style.width = Math.round(cw) + 'px';
+  c.style.height = Math.round(ch) + 'px';
+  c.style.background = bgCss();
+
+  const P=S.pad;
+  const pct=v=>v+'%';
+  const radius=S.radUnit==='pct'?S.rad+'%':(S.rad/10)+'px';
+  const blurLayer=S.bg==='blur'?`<div class="absolute inset-0 ph" style="transform:scale(1.35);filter:blur(${S.blur/3}px)"></div>`:'';
+  const innerAR=S.zero?'':(S.inner==='free'?'':`aspect-ratio:${S.inner};`);
+  const chips=S.chips.map(k=>`<span class="chip ${k==='lens'?'warn':''}" draggable="true" data-k="${k}">${k==='lens'?S.lens.split(' ')[0]:CHIPS[k]}</span>`).join('');
+
+  // 左右切割分隔線
+  let splitLines = '';
+  if (S.splitOn && S.splitCount >= 2) {
+    for (let i = 1; i < S.splitCount; i++) {
+      const leftPct = (i / S.splitCount) * 100;
+      splitLines += `<div class="absolute top-0 bottom-0 pointer-events-none" style="left:${leftPct}%;width:2px;background:#007aff;box-shadow:0 0 0 1px rgba(255,255,255,0.8)"></div>`;
+    }
+  }
+
+  // 當點選預覽白框時 (S.showEdgeDist = true)，直接顯示四邊圖片到邊邊的距離與輔助標線，點選數字可直接調整
+  let edgeDistOverlay = '';
+  if (S.showEdgeDist) {
+    const makeBadge = (k, posStyle, lineStyle) => {
+      const isSel = S.sel.includes(k);
+      const isLinked = S.linkedGroup.includes(k) && S.linkedGroup.length > 1;
+      const isEditing = S.editingEdge === k;
+      const rawVal = S.unit === 'px' ? px(S.pad[k]) : (+S.pad[k]).toFixed(1).replace(/\.0$/,'');
+      const unitStr = S.unit === 'px' ? 'px' : '%';
+      const lineColor = isSel ? '#007aff' : 'rgba(0, 122, 255, 0.45)';
+      return `
+        <div class="pointer-events-none" style="position:absolute;${lineStyle};background:${lineColor};z-index:25"></div>
+        <div class="dist-badge ${isSel?'sel':''} ${isLinked?'linked':''}" style="${posStyle}" onclick="onPreviewEdgeClick(event, '${k}')">
+          <span>${EDGE_NAMES[k]}</span>
+          ${isEditing
+            ? `<input id="inlineEdgeInput" class="dist-input" type="number" step="${S.unit==='px'?1:0.5}" value="${rawVal}"
+                 onclick="event.stopPropagation()"
+                 oninput="onInlineEdgeInput(this.value)"
+                 onblur="finishInlineEdgeEdit()"
+                 onkeydown="if(event.key==='Enter')finishInlineEdgeEdit()"><span>${unitStr}</span>`
+            : `<span class="underline decoration-dotted underline-offset-2">${rawVal}${unitStr}</span>`
+          }
+          ${isLinked ? `<span title="已連結" class="text-[10px] opacity-90">🔗</span>` : ''}
+        </div>
+      `;
+    };
+
+    const topH = Math.max(P.t, 2);
+    const botH = Math.max(P.b, 2);
+    const leftW = Math.max(P.l, 2);
+    const rightW = Math.max(P.r, 2);
+
+    edgeDistOverlay = `
+      ${makeBadge('t', `top:${Math.max(topH/2, 4)}%;left:50%;transform:translate(-50%,-50%)`, `top:0;height:${P.t}%;left:50%;width:1.5px`)}
+      ${makeBadge('b', `bottom:${Math.max(botH/2, 4)}%;left:50%;transform:translate(-50%,50%)`, `bottom:0;height:${P.b}%;left:50%;width:1.5px`)}
+      ${makeBadge('l', `left:${Math.max(leftW/2, 5)}%;top:50%;transform:translate(-50%,-50%)`, `left:0;width:${P.l}%;top:50%;height:1.5px`)}
+      ${makeBadge('r', `right:${Math.max(rightW/2, 5)}%;top:50%;transform:translate(50%,-50%)`, `right:0;width:${P.r}%;top:50%;height:1.5px`)}
+    `;
+  }
+
+  c.innerHTML=blurLayer+`
+    <div class="absolute overflow-hidden" id="photoBox" style="left:${pct(P.l)};right:${pct(P.r)};top:${pct(P.t)};bottom:${pct(P.b)};border-radius:${radius};cursor:pointer;${innerAR}margin:auto;${S.adjust?'outline:2px solid #007aff;':S.showEdgeDist?'outline:1.5px dashed rgba(0,122,255,0.75);':''}">
+      <div class="ph w-full h-full" id="photoImg" style="transform:translate(${S.px}px,${S.py}px) scale(${S.zoom})"></div>
+    </div>
+    <div id="footZone" class="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 flex-wrap px-2" style="height:${pct(Math.max(P.b,12))}">${chips}</div>
+    ${splitLines}
+    ${edgeDistOverlay}
+  `;
+
+  updateHud();
+  bindCanvas();
+  renderTab();
+
+  if (S.editingEdge) {
+    const inp = $('#inlineEdgeInput');
+    if (inp && document.activeElement !== inp) {
+      inp.focus();
+      inp.select();
+    }
+  }
+}
+
+function onStageClick(e){
+  if (e.target === $('#stage')) {
+    if (S.adjust || S.showEdgeDist) {
+      S.adjust = false;
+      S.showEdgeDist = false;
+      S.editingEdge = null;
+      render();
+    } else {
+      togglePanel();
+    }
+  }
+}
+
+// 點選預覽白框上的距離數字：選中該邊（若在已連結群組則同步選中群組所有邊），並開啟直接輸入調整
+function onPreviewEdgeClick(e, k){
+  e.stopPropagation();
+  selectEdgeWithLinkRule(k);
+  S.editingEdge = k;
+  render();
+}
+
+function onInlineEdgeInput(val){
+  const num = parseFloat(val);
+  if (isNaN(num)) return;
+  if (S.unit === 'px') {
+    setPadPxSilent(num);
+  } else {
+    setPadSilent(num);
+  }
+  // 同步更新其他被連動邊的標籤文字與預覽位置
+  const P = S.pad;
+  const box = $('#photoBox');
+  if (box) {
+    box.style.top = P.t + '%';
+    box.style.bottom = P.b + '%';
+    box.style.left = P.l + '%';
+    box.style.right = P.r + '%';
+  }
+  renderTab();
+}
+
+function finishInlineEdgeEdit(){
+  S.editingEdge = null;
+  render();
+}
+
+function bindCanvas(){
+  const c=$('#canvas'), box=$('#photoBox'), img=$('#photoImg');
+  // 點選白框區域（非照片、非底欄 chip）→ 顯示四邊距離並可直接點數字調整
+  c.onclick=e=>{
+    if (e.target.closest('#photoBox') || e.target.closest('.chip') || e.target.closest('.dist-badge')) return;
+    e.stopPropagation();
+    S.adjust = false;
+    S.showEdgeDist = true;
+    S.editingEdge = null;
+    // 依據點擊位置相對白框四邊自動選中對應邊（並套用連結群組規則）
+    const rect = c.getBoundingClientRect();
+    const rx = (e.clientX - rect.left) / rect.width;
+    const ry = (e.clientY - rect.top) / rect.height;
+    const dTop = ry, dBot = 1 - ry, dLeft = rx, dRight = 1 - rx;
+    const minD = Math.min(dTop, dBot, dLeft, dRight);
+    const clickedEdge = minD === dTop ? 't' : minD === dBot ? 'b' : minD === dLeft ? 'l' : 'r';
+    selectEdgeWithLinkRule(clickedEdge);
+    render();
+  };
+
+  box.onclick=e=>{
+    e.stopPropagation();
+    S.showEdgeDist=false;
+    S.editingEdge=null;
+    S.adjust=true;
+    render();
+  };
+  if(S.adjust){
+    let d=null;
+    box.onmousedown=e=>{d=[e.clientX-S.px,e.clientY-S.py];};
+    window.onmousemove=e=>{if(d){S.px=e.clientX-d[0];S.py=e.clientY-d[1];img.style.transform=`translate(${S.px}px,${S.py}px) scale(${S.zoom})`}};
+    window.onmouseup=()=>d=null;
+    box.onwheel=e=>{e.preventDefault();S.zoom=Math.max(1,Math.min(4,S.zoom-e.deltaY/500));img.style.transform=`translate(${S.px}px,${S.py}px) scale(${S.zoom})`};
+  }
+  bindChips();
+}
+
+function togglePanel(){
+  const p=$('#panel');
+  p.classList.toggle('hide');
+  $('#arrow').textContent=p.classList.contains('hide')?'⌃':'⌄';
+  if(S.adjust){S.adjust=false;}
+  render();
+}
+
+$$('#tabs button').forEach(b=>b.onclick=()=>{
+  tab=b.dataset.t;
+  if (tab === 'border') S.showEdgeDist = true;
+  $$('#tabs button').forEach(x=>x.classList.toggle('on', x===b));
+  render();
+});
+
+/* ---------- 邊框連結與選取核心邏輯 ---------- */
+function toggleLinkEditMode(){
+  S.linkEditMode = !S.linkEditMode;
+  if (S.linkEditMode) {
+    // 進入「🔗 連結」編輯模式：顯示目前連結群組，讓使用者點選加選或減選
+    S.sel = [...S.linkedGroup];
+  } else {
+    // 取消點選「🔗 連結」後，已連結的邊 (S.linkedGroup) 依然維持連結！
+    if (S.linkedGroup.length > 0) {
+      S.sel = [...S.linkedGroup];
+    } else if (S.sel.length === 0) {
+      S.sel = ['t'];
+    }
+  }
+  S.showEdgeDist = true;
+  render();
+}
+
+function selectEdgeWithLinkRule(k){
+  if (S.linkEditMode) {
+    // 在「🔗 連結」模式中：點選邊可加選或減選進 linkedGroup
+    if (S.linkedGroup.includes(k)) {
+      S.linkedGroup = S.linkedGroup.filter(x => x !== k);
+    } else {
+      // 加入連結群組時，將該邊數值同步至群組現有數值（若有）
+      if (S.linkedGroup.length > 0) {
+        S.pad[k] = S.pad[S.linkedGroup[0]];
+      }
+      S.linkedGroup = [...S.linkedGroup, k];
+    }
+    S.sel = S.linkedGroup.length ? [...S.linkedGroup] : [k];
+  } else {
+    // 取消「🔗 連結」編輯模式後：
+    // 若點選的邊 k 在已連結群組 (linkedGroup) 中，所有已連結的邊全部顯示被選擇，同時調整！
+    if (S.linkedGroup.includes(k) && S.linkedGroup.length > 1) {
+      S.sel = [...S.linkedGroup];
+    } else {
+      // 若點選的是未連結的獨立邊，則只選擇該邊
+      S.sel = [k];
+    }
+  }
+}
+
+function selEdge(k){
+  selectEdgeWithLinkRule(k);
+  S.showEdgeDist = true;
+  S.editingEdge = null;
+  render();
+}
+
+/* ---------- 可編輯滑桿 ---------- */
+function slider(id,label,val,max,unit,onset,min=0,step=0.5){
+  return`<div class="flex items-center gap-2 py-1"><span class="w-12 text-xs muted">${label}</span>
+ <input type="range" min="${min}" max="${max}" step="${step}" value="${val}" class="flex-1" oninput="${onset}(+this.value)">
+ <input class="numin" type="number" min="${min}" max="${max}" value="${(+val).toFixed(unit==='px'||unit==='張'?0:1)}" onchange="${onset}(+this.value)"><span class="text-xs w-5 muted">${unit==='px'?'px':unit==='張'?'張':'%'}</span></div>`;
+}
+function px(v){return Math.round(v*30)} // 以長邊 3000px 換算
+
+function renderTab(){
+  const B=$('#tabBody');
+  if(tab==='ratio'){
+    B.innerHTML=`<div class="text-xs muted mb-1">外部比例（含拍立得規格）</div><div class="flex flex-wrap gap-1.5">
+      ${OUTER.map(o=>`<button class="gbtn ${S.outer[0]===o[1]&&S.outer[1]===o[2]?'on':''}" onclick="setOuter(${o[1]},${o[2]})">${o[0]}</button>`).join('')}</div>
+      <div class="text-xs muted mt-3 mb-1">內部比例 ${S.zero?'(零裁切啟用中，不可調整)':''}</div><div class="flex flex-wrap gap-1.5">
+      ${INNER.map(o=>`<button class="gbtn ${S.inner===o[1]?'on':''}" ${S.zero?'disabled':''} onclick="S.inner='${o[1]}';render()">${o[0]}</button>`).join('')}</div>
+      <label class="flex items-center justify-between mt-3 glass pill px-4 py-2"><span>零裁切（原圖比例）</span>
+      <input type="checkbox" ${S.zero?'checked':''} onchange="S.zero=this.checked;render()" class="w-5 h-5"></label>
+      <div class="text-xs muted mt-2">點選預覽照片可調整位置尺寸；點選白框可直接顯示並修改四邊距離。</div>`;
+  } else if(tab==='border'){
+    const act=S.sel[0] || 't';
+    const v=S.pad[act];
+    const isPx=S.unit==='px';
+    const edge=(k,css)=>{
+      const isSel = S.sel.includes(k);
+      const isLinked = S.linkedGroup.includes(k) && S.linkedGroup.length > 1;
+      const bg = isSel ? 'var(--edge-active)' : 'var(--edge-idle)';
+      const ring = isLinked && !isSel ? 'box-shadow:0 0 0 1.5px #007aff;' : '';
+      return `<button onclick="selEdge('${k}')" title="${EDGE_NAMES[k]}邊${isLinked?' (已連結)':''}" style="position:absolute;${css};background:${bg};${ring}border-radius:4px;transition:all .15s"></button>`;
+    };
+    const linkedNames = S.linkedGroup.length > 1 ? S.linkedGroup.map(k=>EDGE_NAMES[k]).join('') : '無';
+    const selNames = S.sel.map(k=>EDGE_NAMES[k]).join('、');
+
+    B.innerHTML=`<div class="flex gap-3 items-center">
+      <div style="position:relative;width:72px;height:72px;flex:none"><div style="position:absolute;inset:14px;border:2px solid var(--edge-idle);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px" class="muted">${S.linkEditMode?'加減選':'選邊'}</div>
+        ${edge('t','left:14px;right:14px;top:0;height:10px')}${edge('b','left:14px;right:14px;bottom:0;height:10px')}${edge('l','top:14px;bottom:14px;left:0;width:10px')}${edge('r','top:14px;bottom:14px;right:0;width:10px')}</div>
+      <div class="flex-1">
+        <div class="flex gap-1.5 mb-1 flex-wrap">
+          <button class="gbtn ${S.linkEditMode?'on':''}" onclick="toggleLinkEditMode()">🔗 連結 ${S.linkEditMode?'(編輯中)':''}</button>
+          <button class="gbtn ${S.unit==='pct'?'on':''}" onclick="S.unit='pct';render()">比例</button>
+          <button class="gbtn ${isPx?'on':''}" onclick="S.unit='px';render()">px</button>
+        </div>
+        <div class="text-xs muted">
+          ${S.linkEditMode
+            ? `請點選四邊加選或減選連結（目前連結：${linkedNames}），完成後再點一次「🔗 連結」`
+            : `已選：<b>${selNames}</b>（已連結群組：${linkedNames}，點任一連結邊即同步選中調整）`}
+        </div>
+      </div></div>
+      ${isPx?slider('pad','留白',px(v),900,'px','setPadPx',0,1):slider('pad','留白',v,30,'pct','setPad',0,0.5)}
+      <div class="text-xs muted mt-2 mb-1">背景</div><div class="flex gap-1.5 flex-wrap items-center">
+        ${['white:白','black:黑','custom:自訂(HSB)','blur:毛玻璃'].map(x=>{const[k,n]=x.split(':');return`<button class="gbtn ${S.bg===k?'on':''}" onclick="S.bg='${k}';render()">${n}</button>`}).join('')}</div>
+      ${S.bg==='custom'?`<div class="mt-2 glass rounded-2xl p-2"><div class="text-xs mb-1">HSB 色彩選擇</div>
+        ${['色相:360','飽和:100','亮度:100'].map((x,i)=>{const[n,m]=x.split(':');return`<div class="flex items-center gap-2"><span class="w-10 text-xs muted">${n}</span><input type="range" min="0" max="${m}" value="${S.hsb[i]}" class="flex-1" oninput="S.hsb[${i}]=+this.value;render()"><span class="w-8 text-xs text-right">${S.hsb[i]}</span></div>`}).join('')}</div>`:''}
+      ${S.bg==='blur'?slider('blur','模糊度',S.blur,100,'pct','setBlur',0,1)+'<div class="text-xs muted">模糊內容為原圖放大滿版後的模糊</div>':''}
+      <div class="text-xs muted mt-2 mb-1">相片圓角（可切換比例 / px，數字可點選直接修正）</div>
+      <div class="flex gap-1.5"><button class="gbtn ${S.radUnit==='pct'?'on':''}" onclick="S.radUnit='pct';renderTab()">比例</button><button class="gbtn ${S.radUnit==='px'?'on':''}" onclick="S.radUnit='px';renderTab()">px</button></div>
+      ${S.radUnit==='px'?slider('rad','圓角',px(S.rad),300,'px','setRadPx',0,1):slider('rad','圓角',S.rad,15,'pct','setRad',0,0.5)}`;
+  } else if(tab==='footer'){
+    const unused=Object.keys(CHIPS).filter(k=>!S.chips.includes(k));
+    B.innerHTML=`<div class="text-xs muted mb-1">將下方未使用積木往上拖入圖片底欄，或將圖片上的積木往下拖回取消。長按「鏡頭」可選鏡或新增。</div>
+      <div id="palette" class="glass rounded-2xl p-3 flex flex-wrap gap-2 min-h-[72px]">${unused.map(k=>`<span class="chip pal" draggable="true" data-k="${k}">${CHIPS[k]==='Lens'?'鏡頭':CHIPS[k]}</span>`).join('')||'<span class="text-xs muted">所有資訊積木皆已放置於上方圖片底欄</span>'}</div>
+      <div class="text-xs muted mt-2">品牌圖示採用各品牌公開向量檔。</div>`;
+  } else {
+    B.innerHTML=`<label class="flex items-center justify-between glass pill px-4 py-2"><span>啟用左右切割</span><input type="checkbox" ${S.splitOn?'checked':''} onchange="S.splitOn=this.checked;render()" class="w-5 h-5"></label>
+      <div class="text-xs muted mt-3 mb-1">切割數量（橫向左右切為多張）</div>
+      <div class="flex gap-1.5 flex-wrap mb-1">
+        ${[2,3,4,5].map(n=>`<button class="gbtn ${S.splitCount===n?'on':''}" onclick="setSplitCount(${n})">${n} 張</button>`).join('')}
+      </div>
+      ${slider('splitCount','數量',S.splitCount,10,'張','setSplitCount',2,1)}
+      <div class="text-xs muted mt-2 mb-1">兩圖間隙預設（切割上傳後 SNS 兩圖之間的間隙）</div>
+      <div class="flex gap-1.5 flex-wrap">
+        ${[['X (Twitter)',4],['Threads',8],['IG 輪播 (無縫)',0]].map(p=>`<button class="gbtn ${S.gap===p[1]?'on':''}" onclick="S.gap=${p[1]};renderTab()">${p[0]}</button>`).join('')}
+      </div>
+      ${slider('gap','間隙',S.gap,60,'px','setGap',0,1)}`;
+  }
+  bindChips();
+}
+
+function setOuter(w,h){
+  S.outer=[w,h];
+  if(w===54||w===72||w===108){
+    const long=86,wmm=w,imgw=w===54?46:w===72?62:99,imgh=62;
+    S.pad={l:(wmm-imgw)/2/wmm*100,r:(wmm-imgw)/2/wmm*100,t:4/long*100,b:(long-imgh-4)/long*100};
+    S.inner='free';S.zero=false;
+  }
+  render();
+}
+function setPadSilent(v){
+  const clamped = Math.max(0, Math.min(35, v));
+  S.sel.forEach(k => S.pad[k] = clamped);
+}
+function setPadPxSilent(v){
+  setPadSilent(v / 30);
+}
+function setPad(v){
+  setPadSilent(v);
+  S.editingEdge = null;
+  render();
+}
+function setPadPx(v){
+  setPad(v/30);
+}
+function setBlur(v){S.blur=v;render()}
+function setRad(v){S.rad=v;render()}
+function setRadPx(v){S.rad=v/30;render()}
+function setGap(v){S.gap=Math.max(0,Math.min(60,v));renderTab()}
+function setSplitCount(n){S.splitCount=Math.max(2,Math.min(10,Math.round(n)));S.splitOn=true;render();}
+
+/* ---------- 底欄：原生 DnD + 長按選單 ---------- */
+function bindChips(){
+  $$('.chip').forEach(el=>{
+    el.ondragstart=e=>e.dataTransfer.setData('k',el.dataset.k);
+    if(el.dataset.k==='lens'){
+      let t;
+      el.onmousedown=()=>t=setTimeout(lensMenu,550);
+      el.onmouseup=el.onmouseleave=()=>clearTimeout(t);
+    }
+  });
+  const fz=$('#footZone'),pal=$('#palette');
+  if(fz){
+    fz.ondragover=e=>{e.preventDefault();fz.classList.add('dragover')};
+    fz.ondragleave=()=>fz.classList.remove('dragover');
+    fz.ondrop=e=>{
+      e.preventDefault();
+      const k=e.dataTransfer.getData('k');
+      if(!k)return;
+      const target=e.target.closest('.chip');
+      S.chips=S.chips.filter(x=>x!==k);
+      const i=target?S.chips.indexOf(target.dataset.k):S.chips.length;
+      S.chips.splice(i<0?S.chips.length:i,0,k);
+      render();
+    };
+  }
+  if(pal){
+    pal.ondragover=e=>e.preventDefault();
+    pal.ondrop=e=>{
+      e.preventDefault();
+      const k=e.dataTransfer.getData('k');
+      S.chips=S.chips.filter(x=>x!==k);
+      render();
+    };
+  }
+}
+function lensMenu(){
+  const l=prompt('手動鏡頭選單（選擇鏡頭或輸入新鏡頭名稱）：\n1. Helios 44M-5 58mm f/2\n2. 7Artisans 7.5mm F2.8',S.lens);
+  if(l){S.lens=l;render();}
+}
+
+/* ---------- 發佈預覽 ---------- */
+const PLAT=[['Threads',{r:12,gap:8}],['X (Twitter)',{r:16,gap:4}],['Instagram',{r:0,gap:0}],['小紅書',{r:8,gap:4}]];
+let plat=0;
+$('#platRow').innerHTML=PLAT.map((p,i)=>`<button class="gbtn ${i?'':'on'}" onclick="plat=${i};$$('#platRow .gbtn').forEach((b,j)=>b.classList.toggle('on',j===${i}));renderFeed()">${p[0]}</button>`).join('');
+function renderFeed(){
+  const P=PLAT[plat][1];
+  const count = S.splitOn ? S.splitCount : 1;
+  const gap = S.splitOn ? S.gap : 0;
+  let slicesHtml = '';
+  for(let i=0; i<count; i++){
+    const posPct = count > 1 ? (i / (count - 1)) * 100 : 50;
+    slicesHtml += `<div class="ph flex-1" style="aspect-ratio:${S.outer.join('/')};border-radius:${P.r}px;background-position:${posPct}% center"></div>`;
+  }
+  const row = `<div class="flex flex-row overflow-x-auto no-sb" style="gap:${gap}px">${slicesHtml}</div>`;
+  $('#feed').innerHTML=`<div class="flex items-center gap-2 mb-2"><div class="w-8 h-8 rounded-full ph"></div><div class="text-sm font-semibold">your_account · ${PLAT[plat][0]}</div></div>${row}
+   <div class="text-xs muted mt-2">模擬平台圓角 ${P.r}px · 左右切割 ${count} 張 · 兩圖間隙 ${gap}px</div>`;
+}
+
+render();
+</script>
+</body>
+</html>

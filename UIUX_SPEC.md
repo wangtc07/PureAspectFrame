@@ -2,7 +2,7 @@
 
 > **目標平台**：iOS 26.0+ (iPhone / iPad) 與 macOS 26.0+（已於 Xcode 專案移除 visionOS）
 > **視覺風格**：Apple 原生 **Liquid Glass** 透明玻璃材質，背景採用純白或深色（依系統淺色/深色外觀自動切換，不使用漸層背景）。
-> **互動原型**：`pure_aspect_uiux_v2.html`
+> **互動原型（專案內永久保存）**：[docs/mockup.html](docs/mockup.html)（雙擊或使用任何瀏覽器開啟即可操作）
 
 ---
 

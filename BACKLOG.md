@@ -1,6 +1,7 @@
 # PureAspectFrame 完整需求與開發清單目錄 (Development Backlog)
 > 基於 Python `wbg.py` 升級打造之跨平台（iOS 26+ / macOS 26+）主流 SNS 照片發布與畫布編輯工具
 > UI/UX 規範詳見：[UIUX_SPEC.md](UIUX_SPEC.md)
+> 互動原型檔案：[docs/mockup.html](docs/mockup.html)（專案內永久保存）
 
 ---
 
