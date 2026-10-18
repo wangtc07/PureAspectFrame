@@ -21,6 +21,8 @@ public struct CanvasStageView: View {
     @State private var accumulatedOffset: CGSize = .zero
     @State private var scale: CGFloat = 1.0
     @State private var accumulatedScale: CGFloat = 1.0
+    // 是否正在調整圖片位置或尺寸（顯示邊界虛線）
+    @State private var isAdjustingImage: Bool = false
     
     public init(
         image: CGImage,
@@ -106,10 +108,26 @@ public struct CanvasStageView: View {
                                 .scaleEffect(scale)
                                 .offset(offset)
                                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                                .overlay {
+                                    if isAdjustingImage {
+                                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                            .strokeBorder(Color.white, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                                            .overlay {
+                                                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                                    .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 1.2, dash: [6, 4], dashPhase: 3))
+                                            }
+                                            .shadow(color: Color.black.opacity(0.4), radius: 2)
+                                            .scaleEffect(scale)
+                                            .offset(offset)
+                                            .transition(.opacity)
+                                    }
+                                }
+                                .animation(.easeInOut(duration: 0.2), value: isAdjustingImage)
                                 .gesture(
                                     SimultaneousGesture(
                                         DragGesture()
                                             .onChanged { val in
+                                                isAdjustingImage = true
                                                 offset = CGSize(
                                                     width: accumulatedOffset.width + val.translation.width,
                                                     height: accumulatedOffset.height + val.translation.height
@@ -117,16 +135,26 @@ public struct CanvasStageView: View {
                                             }
                                             .onEnded { _ in
                                                 accumulatedOffset = offset
+                                                withAnimation(.easeOut(duration: 0.25)) {
+                                                    isAdjustingImage = false
+                                                }
                                             },
                                         MagnificationGesture()
                                             .onChanged { val in
+                                                isAdjustingImage = true
                                                 scale = max(0.5, min(accumulatedScale * val, 3.5))
                                             }
                                             .onEnded { _ in
                                                 accumulatedScale = scale
+                                                withAnimation(.easeOut(duration: 0.25)) {
+                                                    isAdjustingImage = false
+                                                }
                                             }
                                     )
                                 )
+                                .onTapGesture(count: 2) {
+                                    resetImageTransform()
+                                }
                                 .position(x: padLeft + (photoWidth / 2.0), y: padTop + (photoHeight / 2.0))
                             
                             // 底欄內容
@@ -168,7 +196,10 @@ public struct CanvasStageView: View {
                 }
                 .frame(width: fitSize.width, height: fitSize.height)
                 .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 6)
-                .onTapGesture {
+                .onTapGesture(count: 2) {
+                    resetImageTransform()
+                }
+                .onTapGesture(count: 1) {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         showDistanceMarkers.toggle()
                     }
@@ -176,6 +207,19 @@ public struct CanvasStageView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+    
+    // MARK: - 重設圖片位置與縮放為預設值
+    private func resetImageTransform() {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+            offset = .zero
+            accumulatedOffset = .zero
+            scale = 1.0
+            accumulatedScale = 1.0
+        }
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        #endif
     }
     
     // MARK: - 畫布背景視圖
@@ -209,58 +253,130 @@ public struct CanvasStageView: View {
         photoWidth: CGFloat,
         photoHeight: CGFloat
     ) -> some View {
-        ZStack {
-            // 上方標籤
+        let footerHeight: CGFloat = footerSettings.isEnabled ? (cH * CGFloat(footerSettings.fontSizeScale) * 2.8) : 0
+        return ZStack {
+            let maxRange: CGFloat = borderSettings.unit == .percent ? 40 : 300
+            
+            // 上方尺標標線與標籤
             let isTopSelected = borderSettings.selectedEdges.contains(.top)
+            if padTop > 8 {
+                Path { p in
+                    p.move(to: CGPoint(x: cW / 2 - 12, y: 1))
+                    p.addLine(to: CGPoint(x: cW / 2 + 12, y: 1))
+                    p.move(to: CGPoint(x: cW / 2, y: 1))
+                    p.addLine(to: CGPoint(x: cW / 2, y: padTop - 1))
+                    p.move(to: CGPoint(x: cW / 2 - 12, y: padTop - 1))
+                    p.addLine(to: CGPoint(x: cW / 2 + 12, y: padTop - 1))
+                }
+                .stroke(isTopSelected ? Color.accentColor : Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+            }
             EditableNumberBadge(
                 value: Binding(
                     get: { borderSettings.paddingTop },
                     set: { borderSettings.updatePadding(for: .top, value: $0) }
                 ),
                 unit: borderSettings.unit.rawValue,
-                title: "上邊距"
+                title: "上",
+                range: 0...maxRange,
+                requireDoubleTapToEdit: true,
+                enableScrubber: true,
+                onSelect: {
+                    borderSettings.selectEdgeForAdjustment(.top)
+                }
             )
             .scaleEffect(isTopSelected ? 1.05 : 0.95)
-            .position(x: cW / 2.0, y: max(16, padTop / 2.0))
+            .position(x: cW / 2.0, y: max(18, padTop / 2.0))
             
-            // 下方標籤
+            // 下方尺標標線與標籤
             let isBottomSelected = borderSettings.selectedEdges.contains(.bottom)
+            if padBottom > 8 {
+                let bottomStart = cH - padBottom - footerHeight
+                Path { p in
+                    p.move(to: CGPoint(x: cW / 2 - 12, y: bottomStart + 1))
+                    p.addLine(to: CGPoint(x: cW / 2 + 12, y: bottomStart + 1))
+                    p.move(to: CGPoint(x: cW / 2, y: bottomStart + 1))
+                    p.addLine(to: CGPoint(x: cW / 2, y: cH - 1))
+                    p.move(to: CGPoint(x: cW / 2 - 12, y: cH - 1))
+                    p.addLine(to: CGPoint(x: cW / 2 + 12, y: cH - 1))
+                }
+                .stroke(isBottomSelected ? Color.accentColor : Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+            }
             EditableNumberBadge(
                 value: Binding(
                     get: { borderSettings.paddingBottom },
                     set: { borderSettings.updatePadding(for: .bottom, value: $0) }
                 ),
                 unit: borderSettings.unit.rawValue,
-                title: "下邊距"
+                title: "下",
+                range: 0...maxRange,
+                requireDoubleTapToEdit: true,
+                enableScrubber: true,
+                onSelect: {
+                    borderSettings.selectEdgeForAdjustment(.bottom)
+                }
             )
             .scaleEffect(isBottomSelected ? 1.05 : 0.95)
-            .position(x: cW / 2.0, y: min(cH - 16, cH - (padBottom / 2.0)))
+            .position(x: cW / 2.0, y: min(cH - 18, cH - (padBottom / 2.0)))
             
-            // 左方標籤
+            // 左方尺標標線與標籤
             let isLeftSelected = borderSettings.selectedEdges.contains(.left)
+            if padLeft > 8 {
+                Path { p in
+                    p.move(to: CGPoint(x: 1, y: cH / 2 - 12))
+                    p.addLine(to: CGPoint(x: 1, y: cH / 2 + 12))
+                    p.move(to: CGPoint(x: 1, y: cH / 2))
+                    p.addLine(to: CGPoint(x: padLeft - 1, y: cH / 2))
+                    p.move(to: CGPoint(x: padLeft - 1, y: cH / 2 - 12))
+                    p.addLine(to: CGPoint(x: padLeft - 1, y: cH / 2 + 12))
+                }
+                .stroke(isLeftSelected ? Color.accentColor : Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+            }
             EditableNumberBadge(
                 value: Binding(
                     get: { borderSettings.paddingLeft },
                     set: { borderSettings.updatePadding(for: .left, value: $0) }
                 ),
                 unit: borderSettings.unit.rawValue,
-                title: "左邊距"
+                title: "左",
+                range: 0...maxRange,
+                requireDoubleTapToEdit: true,
+                enableScrubber: true,
+                onSelect: {
+                    borderSettings.selectEdgeForAdjustment(.left)
+                }
             )
             .scaleEffect(isLeftSelected ? 1.05 : 0.95)
-            .position(x: max(24, padLeft / 2.0), y: cH / 2.0)
+            .position(x: max(26, padLeft / 2.0), y: cH / 2.0)
             
-            // 右方標籤
+            // 右方尺標標線與標籤
             let isRightSelected = borderSettings.selectedEdges.contains(.right)
+            if padRight > 8 {
+                Path { p in
+                    p.move(to: CGPoint(x: cW - padRight + 1, y: cH / 2 - 12))
+                    p.addLine(to: CGPoint(x: cW - padRight + 1, y: cH / 2 + 12))
+                    p.move(to: CGPoint(x: cW - padRight + 1, y: cH / 2))
+                    p.addLine(to: CGPoint(x: cW - 1, y: cH / 2))
+                    p.move(to: CGPoint(x: cW - 1, y: cH / 2 - 12))
+                    p.addLine(to: CGPoint(x: cW - 1, y: cH / 2 + 12))
+                }
+                .stroke(isRightSelected ? Color.accentColor : Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+            }
             EditableNumberBadge(
                 value: Binding(
                     get: { borderSettings.paddingRight },
                     set: { borderSettings.updatePadding(for: .right, value: $0) }
                 ),
                 unit: borderSettings.unit.rawValue,
-                title: "右邊距"
+                title: "右",
+                range: 0...maxRange,
+                requireDoubleTapToEdit: true,
+                enableScrubber: true,
+                onSelect: {
+                    borderSettings.selectEdgeForAdjustment(.right)
+                }
             )
             .scaleEffect(isRightSelected ? 1.05 : 0.95)
-            .position(x: min(cW - 24, cW - (padRight / 2.0)), y: cH / 2.0)
+            .position(x: min(cW - 26, cW - (padRight / 2.0)), y: cH / 2.0)
         }
     }
 }

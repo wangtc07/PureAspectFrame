@@ -6,6 +6,9 @@ public struct ContentView: View {
     public var body: some View {
         if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Settings") {
             SettingsView()
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-BorderTab-Markers") {
+            let img = DemoImageProvider.makeDemoImage()
+            EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .border, initialShowDistanceMarkers: true)
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-BorderTab") {
             let img = DemoImageProvider.makeDemoImage()
             EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .border)

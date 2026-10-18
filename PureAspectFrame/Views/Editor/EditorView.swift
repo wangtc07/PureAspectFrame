@@ -47,18 +47,20 @@ public struct EditorView: View {
             }
         }
     }
-    public init(sourceImage: Binding<CGImage>, initialExif: ExifMetadata = ExifMetadata(), initialTab: EditorTab = .ratio) {
+    public init(sourceImage: Binding<CGImage>, initialExif: ExifMetadata = ExifMetadata(), initialTab: EditorTab = .ratio, initialShowDistanceMarkers: Bool = false) {
         self._sourceImage = sourceImage
         self.initialExif = initialExif
         self._exifMetadata = State(initialValue: initialExif)
         self._selectedTab = State(initialValue: initialTab)
+        self._showDistanceMarkers = State(initialValue: initialShowDistanceMarkers)
     }
     
-    public init(sourceImage: CGImage, initialExif: ExifMetadata = ExifMetadata(), initialTab: EditorTab = .ratio) {
+    public init(sourceImage: CGImage, initialExif: ExifMetadata = ExifMetadata(), initialTab: EditorTab = .ratio, initialShowDistanceMarkers: Bool = false) {
         self._sourceImage = .constant(sourceImage)
         self.initialExif = initialExif
         self._exifMetadata = State(initialValue: initialExif)
         self._selectedTab = State(initialValue: initialTab)
+        self._showDistanceMarkers = State(initialValue: initialShowDistanceMarkers)
     }
     
     public var body: some View {

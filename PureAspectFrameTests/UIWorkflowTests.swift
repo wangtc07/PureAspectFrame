@@ -188,5 +188,56 @@ struct UIWorkflowTests {
         widget.onSelectAll?()
         #expect(selectAllCalled == true)
     }
+
+    @Test func testEditableNumberBadgeScrubberLogic() {
+        // 往上滑動 (translationY < 0) 應增加數值
+        let increased = EditableNumberBadge.calculateScrubbedValue(
+            startValue: 20,
+            translationY: -30,
+            sensitivity: 3.0,
+            range: 0...40
+        )
+        #expect(increased == 30)
+        
+        // 往下滑動 (translationY > 0) 應減少數值，並限制在範圍下限
+        let decreased = EditableNumberBadge.calculateScrubbedValue(
+            startValue: 20,
+            translationY: 150,
+            sensitivity: 3.0,
+            range: 0...40
+        )
+        #expect(decreased == 0)
+
+        // 測試超出上限限制
+        let clampedMax = EditableNumberBadge.calculateScrubbedValue(
+            startValue: 35,
+            translationY: -60,
+            sensitivity: 3.0,
+            range: 0...40
+        )
+        #expect(clampedMax == 40)
+    }
+
+    @Test func testCanvasStageViewInstantiation() {
+        let testImage = makeTestImage()
+        var border = BorderSettings()
+        var showDistance = true
+        var isCollapsed = false
+        
+        let stage = CanvasStageView(
+            image: testImage,
+            canvasRatio: .ig4x5,
+            internalRatio: .square1x1,
+            isZeroCrop: false,
+            borderSettings: Binding(get: { border }, set: { border = $0 }),
+            backgroundMode: .white,
+            footerSettings: FooterSettings(),
+            exifMetadata: ExifMetadata(),
+            showDistanceMarkers: Binding(get: { showDistance }, set: { showDistance = $0 }),
+            isBottomPanelCollapsed: Binding(get: { isCollapsed }, set: { isCollapsed = $0 })
+        )
+        let _ = stage.body
+        #expect(showDistance == true)
+    }
 }
 
