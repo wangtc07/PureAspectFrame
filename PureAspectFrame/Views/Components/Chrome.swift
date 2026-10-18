@@ -254,7 +254,7 @@ public struct ChromeCapsuleButton<Label: View>: View {
     }
 }
 
-// MARK: - 工具列標準圖示按鈕 (比照 ChekiLens: xmark 與 checkmark)
+// MARK: - 工具列標準圖示按鈕 (比照 ChekiLens: xmark 與 checkmark，由系統工具列原生渲染玻璃底與邊緣，避免雙重邊框)
 
 public struct CloseToolbarButton: View {
     public var accessibilityLabel: String = "取消"
@@ -268,10 +268,7 @@ public struct CloseToolbarButton: View {
     public var body: some View {
         Button(action: action) {
             Image(systemName: "xmark")
-                .font(.system(size: ChromeMetrics.iconPointSize, weight: .semibold))
-                .liquidGlassCircle(size: ChromeMetrics.circle, ink: .primary)
         }
-        .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
     }
 }
@@ -288,10 +285,7 @@ public struct ConfirmToolbarButton: View {
     public var body: some View {
         Button(action: action) {
             Image(systemName: "checkmark")
-                .font(.system(size: ChromeMetrics.iconPointSize, weight: .semibold))
-                .liquidGlassCircle(size: ChromeMetrics.circle, ink: .primary)
         }
-        .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
     }
 }

@@ -124,4 +124,16 @@ struct UIWorkflowTests {
         #expect(settings?.assetLocalIdentifier == "LOCAL-PHASSET-123")
         #expect(settings?.diskSizeBytes == 128)
     }
+
+    @Test func testToolbarButtonsInitialization() {
+        var didClick = false
+        let closeBtn = CloseToolbarButton { didClick = true }
+        closeBtn.action()
+        #expect(didClick)
+        
+        var didConfirm = false
+        let confirmBtn = ConfirmToolbarButton { didConfirm = true }
+        confirmBtn.action()
+        #expect(didConfirm)
+    }
 }
