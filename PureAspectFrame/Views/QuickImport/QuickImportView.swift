@@ -92,6 +92,8 @@ public struct QuickImportView: View {
                         .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 6)
                         .padding()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(activeBackground.stageBackgroundColor)
+                        .animation(.easeInOut(duration: 0.35), value: activeBackground.stageBackgroundColor)
                 }
                 
                 Group {

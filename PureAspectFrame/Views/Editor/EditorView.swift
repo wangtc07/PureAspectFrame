@@ -77,7 +77,8 @@ public struct EditorView: View {
                     isBottomPanelCollapsed: $isBottomPanelCollapsed
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(uiColor: .systemBackground))
+                .background(backgroundMode.stageBackgroundColor)
+                .animation(.easeInOut(duration: 0.35), value: backgroundMode.stageBackgroundColor)
                 
                 // 下方編輯面板（支援收合與拉出）
                 if isBottomPanelCollapsed {
