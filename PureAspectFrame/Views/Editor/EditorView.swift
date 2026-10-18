@@ -47,17 +47,18 @@ public struct EditorView: View {
             }
         }
     }
-    
-    public init(sourceImage: Binding<CGImage>, initialExif: ExifMetadata = ExifMetadata()) {
+    public init(sourceImage: Binding<CGImage>, initialExif: ExifMetadata = ExifMetadata(), initialTab: EditorTab = .ratio) {
         self._sourceImage = sourceImage
         self.initialExif = initialExif
         self._exifMetadata = State(initialValue: initialExif)
+        self._selectedTab = State(initialValue: initialTab)
     }
     
-    public init(sourceImage: CGImage, initialExif: ExifMetadata = ExifMetadata()) {
+    public init(sourceImage: CGImage, initialExif: ExifMetadata = ExifMetadata(), initialTab: EditorTab = .ratio) {
         self._sourceImage = .constant(sourceImage)
         self.initialExif = initialExif
         self._exifMetadata = State(initialValue: initialExif)
+        self._selectedTab = State(initialValue: initialTab)
     }
     
     public var body: some View {
@@ -117,6 +118,7 @@ public struct EditorView: View {
                                             .font(.subheadline.bold())
                                     }
                                     .frame(maxWidth: .infinity, minHeight: 36)
+                                    .contentShape(Capsule())
                                     .background {
                                         if selectedTab == tab {
                                             Capsule()

@@ -163,5 +163,30 @@ struct UIWorkflowTests {
         #expect(s == 0.8)
         #expect(b == 0.9)
     }
+
+    @Test func testPaddingBoxWidget() {
+        var clickedEdge: PaddingEdge?
+        var selectAllCalled = false
+        let widget = PaddingBoxWidget(
+            selectedEdges: [.top, .bottom],
+            linkedEdges: [.top, .bottom],
+            isLinkedActive: false,
+            onSelectEdge: { edge in
+                clickedEdge = edge
+            },
+            onSelectAll: {
+                selectAllCalled = true
+            }
+        )
+        #expect(widget.selectedEdges.contains(.top))
+        #expect(widget.selectedEdges.contains(.bottom))
+        #expect(!widget.selectedEdges.contains(.left))
+        
+        widget.onSelectEdge(.left)
+        #expect(clickedEdge == .left)
+        
+        widget.onSelectAll?()
+        #expect(selectAllCalled == true)
+    }
 }
 

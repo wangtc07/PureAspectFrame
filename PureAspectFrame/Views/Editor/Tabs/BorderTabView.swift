@@ -37,86 +37,71 @@ public struct BorderTabView: View {
                         .frame(width: 90)
                     }
                     
-                    // 連結模式與四邊指示鈕
-                    HStack(spacing: 8) {
-                        // 🔗 連結編輯模式切換鈕（純圖示）
-                        Button {
-                            borderSettings.isLinkedActive.toggle()
-                        } label: {
-                            Image(systemName: borderSettings.isLinkedActive ? "link.circle.fill" : "link")
-                                .font(.system(size: 15, weight: .semibold))
-                                .frame(width: 38, height: 32)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(borderSettings.isLinkedActive ? Color.accentColor : Color.primary.opacity(0.06))
-                                }
-                                .foregroundStyle(borderSettings.isLinkedActive ? Color.white : Color.primary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(borderSettings.isLinkedActive ? "完成編輯連結" : "編輯四邊連結")
-                        
-                        Spacer()
-                        
-                        // 四邊圖示加選/選中狀態（羅馬字 I / H 邊距尺標圖示）
-                        ForEach(PaddingEdge.allCases) { edge in
-                            let isLinked = borderSettings.linkedEdges.contains(edge)
-                            let isSelected = borderSettings.selectedEdges.contains(edge)
-                            
-                            Button {
+                    // 連結模式與四邊邊界尺標大圖示調整列
+                    HStack(spacing: 16) {
+                        // 1. 大圖示：包含上下左右示意（羅馬字 I / H），可直接點選各邊
+                        PaddingBoxWidget(
+                            selectedEdges: borderSettings.selectedEdges,
+                            linkedEdges: borderSettings.linkedEdges,
+                            isLinkedActive: borderSettings.isLinkedActive,
+                            onSelectEdge: { edge in
                                 borderSettings.selectEdgeForAdjustment(edge)
-                            } label: {
-                                VStack(spacing: 2) {
-                                    PaddingEdgeIcon(edge: edge, isSelected: isSelected)
-                                        .foregroundStyle(isSelected ? Color.accentColor : Color.primary.opacity(0.85))
-                                    if isLinked {
-                                        Circle()
-                                            .fill(Color.accentColor)
-                                            .frame(width: 3.5, height: 3.5)
-                                    } else {
-                                        Circle()
-                                            .fill(Color.clear)
-                                            .frame(width: 3.5, height: 3.5)
-                                    }
-                                }
-                                .frame(width: 38, height: 32)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.05))
-                                        .overlay {
-                                            if isSelected {
-                                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                    .strokeBorder(Color.accentColor, lineWidth: 1.5)
-                                            }
-                                        }
-                                }
+                            },
+                            onSelectAll: {
+                                borderSettings.selectedEdges = Set(PaddingEdge.allCases)
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(edge.rawValue)
-                        }
-                    }
-                    
-                    // 留白數值調整滑桿
-                    let activeEdge = borderSettings.selectedEdges.first ?? .top
-                    let currentVal = borderSettings.padding(for: activeEdge)
-                    let maxRange: CGFloat = borderSettings.unit == .percent ? 40 : 300
-                    
-                    HStack(spacing: 12) {
-                        Slider(
-                            value: Binding(
-                                get: { currentVal },
-                                set: { borderSettings.updatePadding(for: activeEdge, value: $0) }
-                            ),
-                            in: 0...maxRange
                         )
                         
-                        EditableNumberBadge(
-                            value: Binding(
-                                get: { currentVal },
-                                set: { borderSettings.updatePadding(for: activeEdge, value: $0) }
-                            ),
-                            unit: borderSettings.unit.rawValue,
-                            range: 0...maxRange
-                        )
+                        // 2. 數值滑桿與連結控制區
+                        VStack(spacing: 8) {
+                            HStack {
+                                selectedEdgesDescription
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(borderSettings.isLinkedActive ? Color.accentColor : Color.secondary)
+                                
+                                Spacer()
+                                
+                                // 🔗 連結模式切換按鈕（純圖示）
+                                Button {
+                                    borderSettings.isLinkedActive.toggle()
+                                } label: {
+                                    Image(systemName: borderSettings.isLinkedActive ? "link.circle.fill" : "link")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .frame(width: 32, height: 26)
+                                        .background {
+                                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                                .fill(borderSettings.isLinkedActive ? Color.accentColor : Color.primary.opacity(0.06))
+                                        }
+                                        .foregroundStyle(borderSettings.isLinkedActive ? Color.white : Color.primary)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(borderSettings.isLinkedActive ? "完成編輯連結" : "編輯四邊連結")
+                            }
+                            
+                            // 留白數值調整滑桿
+                            let activeEdge = borderSettings.selectedEdges.first ?? .top
+                            let currentVal = borderSettings.padding(for: activeEdge)
+                            let maxRange: CGFloat = borderSettings.unit == .percent ? 40 : 300
+                            
+                            HStack(spacing: 8) {
+                                Slider(
+                                    value: Binding(
+                                        get: { currentVal },
+                                        set: { borderSettings.updatePadding(for: activeEdge, value: $0) }
+                                    ),
+                                    in: 0...maxRange
+                                )
+                                
+                                EditableNumberBadge(
+                                    value: Binding(
+                                        get: { currentVal },
+                                        set: { borderSettings.updatePadding(for: activeEdge, value: $0) }
+                                    ),
+                                    unit: borderSettings.unit.rawValue,
+                                    range: 0...maxRange
+                                )
+                            }
+                        }
                     }
                 }
                 .padding()
@@ -261,6 +246,25 @@ public struct BorderTabView: View {
                 .onDisappear {
                     backgroundMode = .customHSB(hue: customH, saturation: customS, brightness: customB)
                 }
+        }
+    }
+    
+    // MARK: - 當前選中邊界說明
+    private var selectedEdgesDescription: Text {
+        if borderSettings.isLinkedActive {
+            return Text("點選邊界加入/移除連結")
+        }
+        let selected = borderSettings.selectedEdges
+        if selected.count == 4 {
+            return Text("四邊連動調整")
+        } else if selected.count == 2 && selected.contains(.top) && selected.contains(.bottom) {
+            return Text("上下邊界")
+        } else if selected.count == 2 && selected.contains(.left) && selected.contains(.right) {
+            return Text("左右邊界")
+        } else if let first = selected.first {
+            return Text("\(first.rawValue)邊界")
+        } else {
+            return Text("四邊留白")
         }
     }
 }
