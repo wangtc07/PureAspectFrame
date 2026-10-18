@@ -136,4 +136,12 @@ struct UIWorkflowTests {
         confirmBtn.action()
         #expect(didConfirm)
     }
+
+    @Test func testPaddingEdgeIconInitialization() {
+        for edge in PaddingEdge.allCases {
+            let icon = PaddingEdgeIcon(edge: edge, isSelected: true)
+            #expect(icon.edge == edge)
+            #expect(icon.isSelected == true)
+        }
+    }
 }

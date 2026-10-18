@@ -39,28 +39,25 @@ public struct BorderTabView: View {
                     
                     // 連結模式與四邊指示鈕
                     HStack(spacing: 8) {
-                        // 🔗 連結編輯模式切換鈕
+                        // 🔗 連結編輯模式切換鈕（純圖示）
                         Button {
                             borderSettings.isLinkedActive.toggle()
                         } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: borderSettings.isLinkedActive ? "link.circle.fill" : "link")
-                                Text(borderSettings.isLinkedActive ? "編輯連結中" : "🔗 連結")
-                                    .font(.caption.bold())
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background {
-                                Capsule()
-                                    .fill(borderSettings.isLinkedActive ? Color.accentColor : Color.primary.opacity(0.08))
-                            }
-                            .foregroundStyle(borderSettings.isLinkedActive ? Color.white : Color.primary)
+                            Image(systemName: borderSettings.isLinkedActive ? "link.circle.fill" : "link")
+                                .font(.system(size: 15, weight: .semibold))
+                                .frame(width: 38, height: 32)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(borderSettings.isLinkedActive ? Color.accentColor : Color.primary.opacity(0.06))
+                                }
+                                .foregroundStyle(borderSettings.isLinkedActive ? Color.white : Color.primary)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel(borderSettings.isLinkedActive ? "完成編輯連結" : "編輯四邊連結")
                         
                         Spacer()
                         
-                        // 四邊圖示加選/選中狀態
+                        // 四邊圖示加選/選中狀態（羅馬字 I / H 邊距尺標圖示）
                         ForEach(PaddingEdge.allCases) { edge in
                             let isLinked = borderSettings.linkedEdges.contains(edge)
                             let isSelected = borderSettings.selectedEdges.contains(edge)
@@ -69,27 +66,32 @@ public struct BorderTabView: View {
                                 borderSettings.selectEdgeForAdjustment(edge)
                             } label: {
                                 VStack(spacing: 2) {
-                                    Text(edge.rawValue)
-                                        .font(.caption2.bold())
+                                    PaddingEdgeIcon(edge: edge, isSelected: isSelected)
+                                        .foregroundStyle(isSelected ? Color.accentColor : Color.primary.opacity(0.85))
                                     if isLinked {
                                         Circle()
-                                            .fill(Color.blue)
-                                            .frame(width: 4, height: 4)
+                                            .fill(Color.accentColor)
+                                            .frame(width: 3.5, height: 3.5)
+                                    } else {
+                                        Circle()
+                                            .fill(Color.clear)
+                                            .frame(width: 3.5, height: 3.5)
                                     }
                                 }
                                 .frame(width: 38, height: 32)
                                 .background {
                                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(isSelected ? Color.blue.opacity(0.2) : Color.primary.opacity(0.05))
+                                        .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.05))
                                         .overlay {
                                             if isSelected {
                                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                    .strokeBorder(Color.blue, lineWidth: 1.5)
+                                                    .strokeBorder(Color.accentColor, lineWidth: 1.5)
                                             }
                                         }
                                 }
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(edge.rawValue)
                         }
                     }
                     
