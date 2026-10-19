@@ -240,5 +240,83 @@ struct UIWorkflowTests {
         let _ = stage.body
         #expect(showDistance == true)
     }
+
+    @Test func testArtworkSelectionState() {
+        var state = ArtworkSelectionState()
+        let id1 = UUID()
+        let id2 = UUID()
+        let id3 = UUID()
+        let allIDs = [id1, id2, id3]
+
+        // 初始狀態為空
+        #expect(state.selectedIDs.isEmpty)
+        #expect(!state.isSelected(id1))
+
+        // 單選切換
+        state.toggle(id1)
+        #expect(state.isSelected(id1))
+        #expect(state.selectedIDs.count == 1)
+
+        state.toggle(id2)
+        #expect(state.isSelected(id2))
+        #expect(state.selectedIDs.count == 2)
+
+        state.toggle(id1)
+        #expect(!state.isSelected(id1))
+        #expect(state.selectedIDs.count == 1)
+
+        // 全選與取消全選切換
+        state.toggleSelectAll(from: allIDs)
+        #expect(state.selectedIDs.count == 3)
+        #expect(state.isSelected(id1) && state.isSelected(id2) && state.isSelected(id3))
+
+        // 再次切換全選應全部取消
+        state.toggleSelectAll(from: allIDs)
+        #expect(state.selectedIDs.isEmpty)
+    }
+
+    @Test func testArtworkExportHelperAndBatchDelete() throws {
+        let schema = Schema([ManualLens.self, FrameTemplate.self, ArtworkRecord.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [config])
+        let context = container.mainContext
+
+        // 建立測試用圖片 Data
+        let testImage = makeTestImage()
+        let uiImage = UIImage(cgImage: testImage)
+        let imgData = uiImage.jpegData(compressionQuality: 0.9)!
+
+        let record1 = ArtworkRecord(title: "Record 1", storagePolicy: .fullImage, exportedImageData: imgData)
+        let record2 = ArtworkRecord(title: "Record 2", storagePolicy: .settingsOnly, thumbnailData: imgData)
+        let record3 = ArtworkRecord(title: "Record 3", storagePolicy: .settingsOnly, thumbnailData: nil)
+
+        context.insert(record1)
+        context.insert(record2)
+        context.insert(record3)
+        try context.save()
+
+        // 導出測試
+        let exportedImages = ArtworkExportHelper.exportImages(for: [record1, record2, record3])
+        #expect(exportedImages.count == 2)
+
+        // 單項導出測試
+        #expect(ArtworkExportHelper.exportImage(for: record1) != nil)
+        #expect(ArtworkExportHelper.exportImage(for: record3) == nil)
+
+        // 批次刪除測試
+        var selection = ArtworkSelectionState()
+        selection.toggle(record1.id)
+        selection.toggle(record2.id)
+
+        let allRecords = try context.fetch(FetchDescriptor<ArtworkRecord>())
+        for record in allRecords where selection.isSelected(record.id) {
+            context.delete(record)
+        }
+        try context.save()
+
+        let remaining = try context.fetch(FetchDescriptor<ArtworkRecord>())
+        #expect(remaining.count == 1)
+        #expect(remaining.first?.id == record3.id)
+    }
 }
 
