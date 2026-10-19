@@ -5,7 +5,31 @@ public struct ContentView: View {
     public init() {}
     
     public var body: some View {
-        if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Settings") {
+        if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-Instagram") {
+            let demo = DemoImageProvider.makeDemoImage()
+            let slices = (0..<3).map { _ in demo }
+            SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .instagram)
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-Instagram-Page2") {
+            let demo = DemoImageProvider.makeDemoImage()
+            let slices = (0..<3).map { _ in demo }
+            SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .instagram, initialInstagramPageIndex: 1)
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-Threads-Separated") {
+            let demo = DemoImageProvider.makeDemoImage()
+            let slices = (0..<2).map { _ in demo }
+            SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .threads, initialIsThreadsMerged: false)
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-Threads-Merged") {
+            let demo = DemoImageProvider.makeDemoImage()
+            let slices = (0..<2).map { _ in demo }
+            SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .threads, initialIsThreadsMerged: true)
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-XTwitter") {
+            let demo = DemoImageProvider.makeDemoImage()
+            let slices = (0..<2).map { _ in demo }
+            SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .xTwitter)
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-RedBook") {
+            let demo = DemoImageProvider.makeDemoImage()
+            let slices = (0..<3).map { _ in demo }
+            SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .redBook)
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Settings") {
             SettingsView()
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Split-ZeroGap-Dark") {
             let img = DemoImageProvider.makeDarkDemoImage()

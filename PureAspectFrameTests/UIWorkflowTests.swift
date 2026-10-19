@@ -439,5 +439,33 @@ struct UIWorkflowTests {
         )
         _ = stage
     }
+
+    @Test func testSNSPreviewViewPlatformFeaturesAndGestures() {
+        // 1. 驗證各社群平台規範常數
+        #expect(SNSTargetPlatform.instagram.postCornerRadius == 0)
+        #expect(SNSTargetPlatform.threads.postCornerRadius == 12)
+        #expect(SNSTargetPlatform.xTwitter.postCornerRadius == 16)
+        #expect(SNSTargetPlatform.redBook.postCornerRadius == 8)
+        
+        #expect(SNSTargetPlatform.threads.supportsPinchToMerge == true)
+        #expect(SNSTargetPlatform.instagram.supportsPinchToMerge == false)
+
+        // 2. 驗證 Threads 雙圖捏合縫合幾何計算
+        #expect(SNSPreviewView.threadsGap(isMerged: false) == 6.0)
+        #expect(SNSPreviewView.threadsGap(isMerged: true) == 0.0)
+        #expect(SNSPreviewView.threadsInnerCornerRadius(isMerged: false) == 12.0)
+        #expect(SNSPreviewView.threadsInnerCornerRadius(isMerged: true) == 0.0)
+
+        // 3. 驗證 SNSPreviewView 初始化與狀態參數
+        let img1 = makeTestImage()
+        let img2 = makeTestImage()
+        let view = SNSPreviewView(
+            renderedImage: img1,
+            slices: [img1, img2],
+            initialPlatform: .threads,
+            initialIsThreadsMerged: true
+        )
+        _ = view
+    }
 }
 
