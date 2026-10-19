@@ -6,6 +6,24 @@ public struct ContentView: View {
     public var body: some View {
         if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Settings") {
             SettingsView()
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-BorderTab-TwoGroups") {
+            let img = DemoImageProvider.makeDemoImage()
+            EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .border, initialBorderSettings: {
+                var b = BorderSettings()
+                b.setLinkGroups(a: [.top, .bottom], b: [.left, .right])
+                b.selectedEdges = [.left, .right]
+                return b
+            }())
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-BorderTab-LinkEdit") {
+            let img = DemoImageProvider.makeDemoImage()
+            EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .border, initialBorderSettings: {
+                var b = BorderSettings()
+                b.setLinkGroups(a: [.top, .bottom], b: [.left])
+                b.isLinkedActive = true
+                b.activeLinkSlot = 1
+                b.selectedEdges = [.left]
+                return b
+            }())
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-BorderTab-Markers") {
             let img = DemoImageProvider.makeDemoImage()
             EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .border, initialShowDistanceMarkers: true)

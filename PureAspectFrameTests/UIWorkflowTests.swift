@@ -169,8 +169,9 @@ struct UIWorkflowTests {
         var selectAllCalled = false
         let widget = PaddingBoxWidget(
             selectedEdges: [.top, .bottom],
-            linkedEdges: [.top, .bottom],
+            linkGroups: [[.top, .bottom], [.left, .right]],
             isLinkedActive: false,
+            activeLinkSlot: 0,
             onSelectEdge: { edge in
                 clickedEdge = edge
             },

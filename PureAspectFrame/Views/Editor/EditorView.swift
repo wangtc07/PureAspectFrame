@@ -55,12 +55,13 @@ public struct EditorView: View {
         self._showDistanceMarkers = State(initialValue: initialShowDistanceMarkers)
     }
     
-    public init(sourceImage: CGImage, initialExif: ExifMetadata = ExifMetadata(), initialTab: EditorTab = .ratio, initialShowDistanceMarkers: Bool = false) {
+    public init(sourceImage: CGImage, initialExif: ExifMetadata = ExifMetadata(), initialTab: EditorTab = .ratio, initialShowDistanceMarkers: Bool = false, initialBorderSettings: BorderSettings = BorderSettings()) {
         self._sourceImage = .constant(sourceImage)
         self.initialExif = initialExif
         self._exifMetadata = State(initialValue: initialExif)
         self._selectedTab = State(initialValue: initialTab)
         self._showDistanceMarkers = State(initialValue: initialShowDistanceMarkers)
+        self._borderSettings = State(initialValue: initialBorderSettings)
     }
     
     public var body: some View {

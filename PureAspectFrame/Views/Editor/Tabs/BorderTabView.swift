@@ -37,13 +37,14 @@ public struct BorderTabView: View {
                         .frame(width: 90)
                     }
                     
-                    // 連結模式與四邊邊界尺標大圖示調整列
-                    HStack(spacing: 16) {
+                    // 尺標大圖示 + 連結組與數值調整
+                    HStack(alignment: .top, spacing: 16) {
                         // 1. 大圖示：包含上下左右示意（羅馬字 I / H），可直接點選各邊
                         PaddingBoxWidget(
                             selectedEdges: borderSettings.selectedEdges,
-                            linkedEdges: borderSettings.linkedEdges,
+                            linkGroups: borderSettings.linkGroups,
                             isLinkedActive: borderSettings.isLinkedActive,
+                            activeLinkSlot: borderSettings.activeLinkSlot,
                             onSelectEdge: { edge in
                                 borderSettings.selectEdgeForAdjustment(edge)
                             },
@@ -52,33 +53,40 @@ public struct BorderTabView: View {
                             }
                         )
                         
-                        // 2. 數值滑桿與連結控制區
-                        VStack(spacing: 8) {
-                            HStack {
-                                selectedEdgesDescription
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(borderSettings.isLinkedActive ? Color.accentColor : Color.secondary)
+                        VStack(alignment: .leading, spacing: 8) {
+                            // 2. 連結組 A / B（最多兩組）+ 連結編輯開關
+                            HStack(spacing: 6) {
+                                linkGroupChip(0)
+                                linkGroupChip(1)
+                                Spacer(minLength: 0)
                                 
-                                Spacer()
-                                
-                                // 🔗 連結模式切換按鈕（純圖示）
                                 Button {
-                                    borderSettings.isLinkedActive.toggle()
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        borderSettings.isLinkedActive.toggle()
+                                    }
                                 } label: {
-                                    Image(systemName: borderSettings.isLinkedActive ? "link.circle.fill" : "link")
+                                    let on = borderSettings.isLinkedActive
+                                    let color = LinkGroupStyle.color(borderSettings.activeLinkSlot)
+                                    Image(systemName: on ? "checkmark" : "link.badge.plus")
                                         .font(.system(size: 14, weight: .semibold))
-                                        .frame(width: 32, height: 26)
+                                        .frame(width: 32, height: 28)
+                                        .foregroundStyle(on ? Color.white : Color.primary)
                                         .background {
-                                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                                .fill(borderSettings.isLinkedActive ? Color.accentColor : Color.primary.opacity(0.06))
+                                            Capsule().fill(on ? color : Color.primary.opacity(0.07))
                                         }
-                                        .foregroundStyle(borderSettings.isLinkedActive ? Color.white : Color.primary)
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel(borderSettings.isLinkedActive ? "完成編輯連結" : "編輯四邊連結")
+                                .accessibilityLabel(borderSettings.isLinkedActive ? "完成編輯連結" : "編輯連結組")
                             }
                             
-                            // 留白數值調整滑桿
+                            // 3. 狀態列：目前在編輯連結，或正在調整哪些邊
+                            Text(statusText.text)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(statusText.color)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                            
+                            // 4. 留白數值調整滑桿
                             let activeEdge = borderSettings.selectedEdges.first ?? .top
                             let currentVal = borderSettings.padding(for: activeEdge)
                             let maxRange: CGFloat = borderSettings.unit == .percent ? 40 : 300
@@ -249,22 +257,64 @@ public struct BorderTabView: View {
         }
     }
     
-    // MARK: - 當前選中邊界說明
-    private var selectedEdgesDescription: Text {
+    // MARK: - 連結組狀態顯示
+    /// 邊集合的簡短名稱（上下左右順序；四邊 → 「四邊」）
+    private func edgeNames(_ edges: Set<PaddingEdge>) -> String {
+        if edges.count == 4 { return "四邊" }
+        return [PaddingEdge.top, .bottom, .left, .right]
+            .filter { edges.contains($0) }
+            .map(\.rawValue)
+            .joined()
+    }
+    
+    /// 狀態列：明確說明目前處於「編輯連結」或「調整數值」，以及調整的是哪些邊
+    private var statusText: (text: String, color: Color) {
+        let slot = borderSettings.activeLinkSlot
         if borderSettings.isLinkedActive {
-            return Text("點選邊界加入/移除連結")
+            return ("編輯連結 \(LinkGroupStyle.name(slot))：點選尺標加入／移除", LinkGroupStyle.color(slot))
         }
         let selected = borderSettings.selectedEdges
-        if selected.count == 4 {
-            return Text("四邊連動調整")
-        } else if selected.count == 2 && selected.contains(.top) && selected.contains(.bottom) {
-            return Text("上下邊界")
-        } else if selected.count == 2 && selected.contains(.left) && selected.contains(.right) {
-            return Text("左右邊界")
-        } else if let first = selected.first {
-            return Text("\(first.rawValue)邊界")
-        } else {
-            return Text("四邊留白")
+        let names = edgeNames(selected)
+        if let first = selected.first, let idx = borderSettings.groupIndex(of: first),
+           borderSettings.linkGroups[idx].count >= 2, borderSettings.linkGroups[idx] == selected {
+            return ("調整 \(names)（連結 \(LinkGroupStyle.name(idx))）", LinkGroupStyle.color(idx))
         }
+        if selected.count == 4 { return ("調整四邊", .secondary) }
+        return ("調整 \(names)（單獨）", .secondary)
+    }
+    
+    /// 連結組晶片：顯示 A / B 組目前成員。連結編輯模式下點選＝切換編輯中的組；一般模式下點選＝選取該組
+    private func linkGroupChip(_ slot: Int) -> some View {
+        let members = borderSettings.linkGroups[slot]
+        let color = LinkGroupStyle.color(slot)
+        let isEditingSlot = borderSettings.isLinkedActive && borderSettings.activeLinkSlot == slot
+        let isEmpty = members.isEmpty
+        return Button {
+            if borderSettings.isLinkedActive {
+                borderSettings.activeLinkSlot = slot
+            } else if members.count >= 2 {
+                borderSettings.selectedEdges = members
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "link")
+                    .font(.system(size: 10, weight: .bold))
+                Text("\(LinkGroupStyle.name(slot)) \(isEmpty ? "—" : edgeNames(members))")
+                    .font(.caption.weight(.semibold))
+            }
+            .padding(.horizontal, 9)
+            .frame(height: 28)
+            .foregroundStyle(isEditingSlot ? Color.white : (isEmpty ? Color.secondary : color))
+            .background {
+                Capsule()
+                    .fill(isEditingSlot ? color : color.opacity(isEmpty ? 0.06 : 0.14))
+                    .overlay {
+                        Capsule().strokeBorder(color.opacity(isEmpty ? 0.25 : 0.6),
+                                               style: StrokeStyle(lineWidth: 1, dash: isEmpty ? [3, 2] : []))
+                    }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("連結組 \(LinkGroupStyle.name(slot))：\(isEmpty ? "未設定" : edgeNames(members))")
     }
 }

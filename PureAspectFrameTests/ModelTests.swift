@@ -57,6 +57,72 @@ struct ModelTests {
         #expect(border.paddingBottom != 40) // Bottom was unlinked, retains default
     }
 
+    @Test func testBorderTwoLinkGroups() {
+        var border = BorderSettings()
+        // 預設：只有 A 組（四邊），B 組為空
+        #expect(border.linkGroups.count == 2)
+        #expect(border.linkGroups[0] == Set(PaddingEdge.allCases))
+        #expect(border.linkGroups[1].isEmpty)
+
+        // 重新規劃：A = 上下、B = 左右
+        border.setLinkGroups(a: [.top, .bottom], b: [.left, .right])
+        #expect(border.groupIndex(of: .top) == 0)
+        #expect(border.groupIndex(of: .bottom) == 0)
+        #expect(border.groupIndex(of: .left) == 1)
+        #expect(border.groupIndex(of: .right) == 1)
+
+        // 點選上 → 選中上下；點選右 → 選中左右
+        #expect(border.selectEdgeForAdjustment(.top) == [.top, .bottom])
+        #expect(border.selectEdgeForAdjustment(.right) == [.left, .right])
+
+        // 兩組互不影響
+        border.updatePadding(for: .top, value: 10)
+        border.updatePadding(for: .left, value: 30)
+        #expect(border.paddingTop == 10 && border.paddingBottom == 10)
+        #expect(border.paddingLeft == 30 && border.paddingRight == 30)
+    }
+
+    @Test func testBorderLinkModeAssignsEdgeToActiveSlotExclusively() {
+        var border = BorderSettings()
+        border.setLinkGroups(a: [.top, .bottom], b: [])
+        border.isLinkedActive = true
+
+        // 在 B 組模式下點選上：上從 A 移到 B（一條邊只屬於一組）
+        border.activeLinkSlot = 1
+        border.toggleEdgeInLinkMode(.top)
+        #expect(border.groupIndex(of: .top) == 1)
+        #expect(!border.linkGroups[0].contains(.top))
+
+        // 再點一次同一邊 → 從 B 移除，變成未連結
+        border.toggleEdgeInLinkMode(.top)
+        #expect(border.groupIndex(of: .top) == nil)
+
+        // 只剩單邊的組不構成連結：A 只剩下 → 調整下不連動
+        border.isLinkedActive = false
+        #expect(border.selectEdgeForAdjustment(.bottom) == [.bottom])
+        border.updatePadding(for: .bottom, value: 5)
+        #expect(border.paddingTop != 5)
+    }
+
+    @Test func testBorderSettingsDecodesLegacyLinkedEdges() throws {
+        // 舊版模板只有 linkedEdges 欄位（單組連結）
+        let legacy = """
+        {"unit":"%","paddingTop":20,"paddingBottom":20,"paddingLeft":20,"paddingRight":20,
+         "isLinkedActive":false,"linkedEdges":["上","下"],"selectedEdges":["上"],
+         "cornerRadius":0,"cornerRadiusUnit":"%"}
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(BorderSettings.self, from: legacy)
+        #expect(decoded.linkGroups[0] == [.top, .bottom])
+        #expect(decoded.linkGroups[1].isEmpty)
+
+        // 新版編碼往返
+        var border = BorderSettings()
+        border.setLinkGroups(a: [.top, .bottom], b: [.left, .right])
+        let data = try JSONEncoder().encode(border)
+        let back = try JSONDecoder().decode(BorderSettings.self, from: data)
+        #expect(back == border)
+    }
+
     // MARK: - SplitSettings Tests
     @Test func testSplitSettingsSlicingCalculations() {
         var split = SplitSettings()
