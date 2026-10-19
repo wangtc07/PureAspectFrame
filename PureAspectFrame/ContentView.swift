@@ -55,6 +55,15 @@ public struct ContentView: View {
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-BorderTab") {
             let img = DemoImageProvider.makeDemoImage()
             EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .border)
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Editor-AdjustingImage") {
+            let img = DemoImageProvider.makeDemoImage()
+            EditorView(
+                sourceImage: img,
+                initialExif: DemoImageProvider.demoExif,
+                initialOffset: CGSize(width: 45, height: -30),
+                initialScale: 1.35,
+                initialIsAdjustingImage: true
+            )
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Editor") {
             let img = DemoImageProvider.makeDemoImage()
             EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif)

@@ -24,6 +24,14 @@ public struct CanvasStageView: View {
     // 是否正在調整圖片位置或尺寸（顯示邊界虛線）
     @State private var isAdjustingImage: Bool = false
     
+    // MARK: - 視覺樣式規範（細灰黑內部畫框線、半透明淺灰超出範圍線，無陰影模糊）
+    public static let innerFrameStrokeStyle = StrokeStyle(lineWidth: 1.0, dash: [4, 3])
+    public static func innerFrameColor(isDarkBackground: Bool) -> Color {
+        isDarkBackground ? Color(hex: "#AEAEB2").opacity(0.85) : Color(hex: "#2C2C2E").opacity(0.8)
+    }
+    public static let photoOverflowStrokeStyle = StrokeStyle(lineWidth: 1.0, dash: [5, 4])
+    public static let photoOverflowColor = Color(hex: "#8E8E93").opacity(0.65)
+    
     public init(
         image: CGImage,
         canvasRatio: CanvasRatio,
@@ -34,7 +42,10 @@ public struct CanvasStageView: View {
         footerSettings: FooterSettings,
         exifMetadata: ExifMetadata,
         showDistanceMarkers: Binding<Bool>,
-        isBottomPanelCollapsed: Binding<Bool>
+        isBottomPanelCollapsed: Binding<Bool>,
+        initialOffset: CGSize = .zero,
+        initialScale: CGFloat = 1.0,
+        initialIsAdjustingImage: Bool = false
     ) {
         self.image = image
         self.canvasRatio = canvasRatio
@@ -46,6 +57,11 @@ public struct CanvasStageView: View {
         self.exifMetadata = exifMetadata
         self._showDistanceMarkers = showDistanceMarkers
         self._isBottomPanelCollapsed = isBottomPanelCollapsed
+        self._offset = State(initialValue: initialOffset)
+        self._accumulatedOffset = State(initialValue: initialOffset)
+        self._scale = State(initialValue: initialScale)
+        self._accumulatedScale = State(initialValue: initialScale)
+        self._isAdjustingImage = State(initialValue: initialIsAdjustingImage)
     }
     
     public var body: some View {
@@ -100,7 +116,31 @@ public struct CanvasStageView: View {
                         let cornerRadius = borderSettings.cornerRadiusUnit == .percent ? (min(photoWidth, photoHeight) * borderSettings.cornerRadius / 100.0) : borderSettings.cornerRadius
                         
                         ZStack(alignment: .topLeading) {
-                            // 照片主體
+                            // 1. 照片手勢調整時：背景顯示實際照片（超出的部分呈現半透明淺灰色外觀，高級感）
+                            if isAdjustingImage {
+                                ZStack {
+                                    Image(decorative: image, scale: 1.0)
+                                        .resizable()
+                                        .aspectRatio(contentMode: isZeroCrop ? .fit : .fill)
+                                        .frame(width: photoWidth, height: photoHeight)
+                                        .opacity(0.35)
+                                    
+                                    // 實際照片尺寸邊界：半透明淺灰色虛線（無陰影）
+                                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                        .strokeBorder(
+                                            Self.photoOverflowColor,
+                                            style: Self.photoOverflowStrokeStyle
+                                        )
+                                        .frame(width: photoWidth, height: photoHeight)
+                                }
+                                .scaleEffect(scale)
+                                .offset(offset)
+                                .position(x: padLeft + (photoWidth / 2.0), y: padTop + (photoHeight / 2.0))
+                                .allowsHitTesting(false)
+                                .transition(.opacity)
+                            }
+                            
+                            // 2. 照片主體（被內部畫框裁切之主要視野）
                             Image(decorative: image, scale: 1.0)
                                 .resizable()
                                 .aspectRatio(contentMode: isZeroCrop ? .fit : .fill)
@@ -108,20 +148,6 @@ public struct CanvasStageView: View {
                                 .scaleEffect(scale)
                                 .offset(offset)
                                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                                .overlay {
-                                    if isAdjustingImage {
-                                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                            .strokeBorder(Color.white, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                                            .overlay {
-                                                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                                    .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 1.2, dash: [6, 4], dashPhase: 3))
-                                            }
-                                            .shadow(color: Color.black.opacity(0.4), radius: 2)
-                                            .scaleEffect(scale)
-                                            .offset(offset)
-                                            .transition(.opacity)
-                                    }
-                                }
                                 .animation(.easeInOut(duration: 0.2), value: isAdjustingImage)
                                 .gesture(
                                     SimultaneousGesture(
@@ -156,6 +182,19 @@ public struct CanvasStageView: View {
                                     resetImageTransform()
                                 }
                                 .position(x: padLeft + (photoWidth / 2.0), y: padTop + (photoHeight / 2.0))
+                            
+                            // 3. 內部畫框範圍指示線（細灰黑虛線，無陰影模糊）
+                            if isAdjustingImage {
+                                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                    .strokeBorder(
+                                        Self.innerFrameColor(isDarkBackground: backgroundMode.isDarkOrNearDarkGray),
+                                        style: Self.innerFrameStrokeStyle
+                                    )
+                                    .frame(width: photoWidth, height: photoHeight)
+                                    .position(x: padLeft + (photoWidth / 2.0), y: padTop + (photoHeight / 2.0))
+                                    .allowsHitTesting(false)
+                                    .transition(.opacity)
+                            }
                             
                             // 底欄內容
                             if footerSettings.isEnabled {

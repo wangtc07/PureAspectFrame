@@ -47,12 +47,28 @@ public struct EditorView: View {
             }
         }
     }
-    public init(sourceImage: Binding<CGImage>, initialExif: ExifMetadata = ExifMetadata(), initialTab: EditorTab = .ratio, initialShowDistanceMarkers: Bool = false) {
+    
+    private let initialOffset: CGSize
+    private let initialScale: CGFloat
+    private let initialIsAdjustingImage: Bool
+    
+    public init(
+        sourceImage: Binding<CGImage>,
+        initialExif: ExifMetadata = ExifMetadata(),
+        initialTab: EditorTab = .ratio,
+        initialShowDistanceMarkers: Bool = false,
+        initialOffset: CGSize = .zero,
+        initialScale: CGFloat = 1.0,
+        initialIsAdjustingImage: Bool = false
+    ) {
         self._sourceImage = sourceImage
         self.initialExif = initialExif
         self._exifMetadata = State(initialValue: initialExif)
         self._selectedTab = State(initialValue: initialTab)
         self._showDistanceMarkers = State(initialValue: initialShowDistanceMarkers)
+        self.initialOffset = initialOffset
+        self.initialScale = initialScale
+        self.initialIsAdjustingImage = initialIsAdjustingImage
     }
     
     public init(
@@ -61,7 +77,10 @@ public struct EditorView: View {
         initialTab: EditorTab = .ratio,
         initialShowDistanceMarkers: Bool = false,
         initialBorderSettings: BorderSettings = BorderSettings(),
-        initialFooterSettings: FooterSettings = FooterSettings()
+        initialFooterSettings: FooterSettings = FooterSettings(),
+        initialOffset: CGSize = .zero,
+        initialScale: CGFloat = 1.0,
+        initialIsAdjustingImage: Bool = false
     ) {
         self._sourceImage = .constant(sourceImage)
         self.initialExif = initialExif
@@ -70,6 +89,9 @@ public struct EditorView: View {
         self._showDistanceMarkers = State(initialValue: initialShowDistanceMarkers)
         self._borderSettings = State(initialValue: initialBorderSettings)
         self._footerSettings = State(initialValue: initialFooterSettings)
+        self.initialOffset = initialOffset
+        self.initialScale = initialScale
+        self.initialIsAdjustingImage = initialIsAdjustingImage
     }
     
     public var body: some View {
@@ -86,7 +108,10 @@ public struct EditorView: View {
                     footerSettings: footerSettings,
                     exifMetadata: exifMetadata,
                     showDistanceMarkers: $showDistanceMarkers,
-                    isBottomPanelCollapsed: $isBottomPanelCollapsed
+                    isBottomPanelCollapsed: $isBottomPanelCollapsed,
+                    initialOffset: initialOffset,
+                    initialScale: initialScale,
+                    initialIsAdjustingImage: initialIsAdjustingImage
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(backgroundMode.stageBackgroundColor)

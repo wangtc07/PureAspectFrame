@@ -318,5 +318,47 @@ struct UIWorkflowTests {
         #expect(remaining.count == 1)
         #expect(remaining.first?.id == record3.id)
     }
+
+    @Test func testCanvasStageImageAdjustmentVisualStyles() {
+        let testImage = makeTestImage()
+        var border = BorderSettings()
+        let footer = FooterSettings()
+        let exif = ExifMetadata()
+
+        // 驗證 CanvasStageView 支援手勢調整狀態之初始參數
+        let stage = CanvasStageView(
+            image: testImage,
+            canvasRatio: .ig4x5,
+            internalRatio: .free,
+            isZeroCrop: false,
+            borderSettings: Binding(get: { border }, set: { border = $0 }),
+            backgroundMode: .white,
+            footerSettings: footer,
+            exifMetadata: exif,
+            showDistanceMarkers: .constant(false),
+            isBottomPanelCollapsed: .constant(false),
+            initialOffset: CGSize(width: 20, height: -10),
+            initialScale: 1.25,
+            initialIsAdjustingImage: true
+        )
+        _ = stage
+
+        // 驗證內部畫框指示線：細灰黑虛線（lineWidth: 1.0, dash: [4, 3]），無陰影模糊
+        let lightInnerStroke = CanvasStageView.innerFrameStrokeStyle
+        #expect(lightInnerStroke.lineWidth == 1.0)
+        #expect(lightInnerStroke.dash == [4, 3])
+
+        let lightInnerColor = CanvasStageView.innerFrameColor(isDarkBackground: false)
+        let darkInnerColor = CanvasStageView.innerFrameColor(isDarkBackground: true)
+        #expect(lightInnerColor != darkInnerColor)
+
+        // 驗證實際照片超出部分邊界：半透明淺灰色虛線（lineWidth: 1.0, dash: [5, 4]），無陰影模糊
+        let overflowStroke = CanvasStageView.photoOverflowStrokeStyle
+        #expect(overflowStroke.lineWidth == 1.0)
+        #expect(overflowStroke.dash == [5, 4])
+
+        let overflowColor = CanvasStageView.photoOverflowColor
+        #expect(overflowColor == Color(hex: "#8E8E93").opacity(0.65))
+    }
 }
 
