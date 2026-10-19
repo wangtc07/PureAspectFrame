@@ -6,27 +6,31 @@ public struct ContentView: View {
     
     public var body: some View {
         if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-Instagram") {
-            let demo = DemoImageProvider.makeDemoImage()
+            let demo = DemoImageProvider.makeDemoImage(width: 1510, height: 1066) // 1.416:1 橫圖
+            let slices = (0..<5).map { _ in demo }
+            SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .instagram)
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-Instagram-Portrait") {
+            let demo = DemoImageProvider.makeDemoImage(width: 1080, height: 1350) // 4:5 直圖
             let slices = (0..<3).map { _ in demo }
             SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .instagram)
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-Instagram-Page2") {
-            let demo = DemoImageProvider.makeDemoImage()
-            let slices = (0..<3).map { _ in demo }
+            let demo = DemoImageProvider.makeDemoImage(width: 1510, height: 1066)
+            let slices = (0..<5).map { _ in demo }
             SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .instagram, initialInstagramPageIndex: 1)
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-Threads-Separated") {
-            let demo = DemoImageProvider.makeDemoImage()
-            let slices = (0..<2).map { _ in demo }
-            SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .threads, initialIsThreadsMerged: false)
+            let full = DemoImageProvider.makeDemoImage(width: 1422, height: 1067) // 切割為 2 張 2:3 (711x1067) 直圖切片
+            let slices = DemoImageProvider.makeDemoSplitSlices(width: 1422, height: 1067, count: 2)
+            SNSPreviewView(renderedImage: full, slices: slices, initialPlatform: .threads, initialIsThreadsMerged: false)
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-Threads-Merged") {
-            let demo = DemoImageProvider.makeDemoImage()
-            let slices = (0..<2).map { _ in demo }
-            SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .threads, initialIsThreadsMerged: true)
+            let full = DemoImageProvider.makeDemoImage(width: 1422, height: 1067)
+            let slices = DemoImageProvider.makeDemoSplitSlices(width: 1422, height: 1067, count: 2)
+            SNSPreviewView(renderedImage: full, slices: slices, initialPlatform: .threads, initialIsThreadsMerged: true)
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-XTwitter") {
-            let demo = DemoImageProvider.makeDemoImage()
-            let slices = (0..<2).map { _ in demo }
-            SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .xTwitter)
+            let full = DemoImageProvider.makeDemoImage(width: 1422, height: 1067)
+            let slices = DemoImageProvider.makeDemoSplitSlices(width: 1422, height: 1067, count: 2)
+            SNSPreviewView(renderedImage: full, slices: slices, initialPlatform: .xTwitter)
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-SNSPreview-RedBook") {
-            let demo = DemoImageProvider.makeDemoImage()
+            let demo = DemoImageProvider.makeDemoImage(width: 1200, height: 1600) // 3:4 直圖
             let slices = (0..<3).map { _ in demo }
             SNSPreviewView(renderedImage: demo, slices: slices, initialPlatform: .redBook)
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Settings") {

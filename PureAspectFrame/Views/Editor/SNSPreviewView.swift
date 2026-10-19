@@ -23,7 +23,38 @@ public enum SNSTargetPlatform: String, CaseIterable, Identifiable {
     }
 }
 
-/// SNS 發佈模擬預覽視圖
+/// 支援個別圓角設定的矩形 Shape（用於 Threads 捏合合體時內側 0 圓角、外側 12pt 圓角）
+private struct UnevenCornersRectangle: Shape {
+    var topLeading: CGFloat
+    var bottomLeading: CGFloat
+    var bottomTrailing: CGFloat
+    var topTrailing: CGFloat
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.size.width
+        let h = rect.size.height
+        
+        let tr = min(min(topTrailing, h / 2), w / 2)
+        let tl = min(min(topLeading, h / 2), w / 2)
+        let bl = min(min(bottomLeading, h / 2), w / 2)
+        let br = min(min(bottomTrailing, h / 2), w / 2)
+        
+        path.move(to: CGPoint(x: w / 2.0, y: 0))
+        path.addLine(to: CGPoint(x: w - tr, y: 0))
+        path.addArc(center: CGPoint(x: w - tr, y: tr), radius: tr, startAngle: Angle(degrees: -90), endAngle: Angle(degrees: 0), clockwise: false)
+        path.addLine(to: CGPoint(x: w, y: h - br))
+        path.addArc(center: CGPoint(x: w - br, y: h - br), radius: br, startAngle: Angle(degrees: 0), endAngle: Angle(degrees: 90), clockwise: false)
+        path.addLine(to: CGPoint(x: bl, y: h))
+        path.addArc(center: CGPoint(x: bl, y: h - bl), radius: bl, startAngle: Angle(degrees: 90), endAngle: Angle(degrees: 180), clockwise: false)
+        path.addLine(to: CGPoint(x: 0, y: tl))
+        path.addArc(center: CGPoint(x: tl, y: tl), radius: tl, startAngle: Angle(degrees: 180), endAngle: Angle(degrees: 270), clockwise: false)
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// SNS 發佈模擬預覽視圖（純粹呈現貼文圖片區域，100% 還原各平台真實版型、動態比例、邊距、間隙與圓角）
 public struct SNSPreviewView: View {
     var renderedImage: CGImage?
     var slices: [CGImage]
@@ -35,13 +66,53 @@ public struct SNSPreviewView: View {
     
     @Environment(\.dismiss) private var dismiss
     
-    // MARK: - Threads 雙圖捏合幾何常數與計算
+    // MARK: - 各平台真實貼文圖片區域幾何與比例計算常數
+    
+    /// Threads 雙圖分開與捏合合體之間隙
     public static func threadsGap(isMerged: Bool) -> CGFloat {
         isMerged ? 0.0 : 6.0
     }
     
+    /// Threads 雙圖分開與捏合合體之相鄰內側圓角
     public static func threadsInnerCornerRadius(isMerged: Bool) -> CGFloat {
         isMerged ? 0.0 : 12.0
+    }
+    
+    /// X (Twitter) 水平滾動多圖間隙 (4pt)
+    public static let xTwitterCarouselGap: CGFloat = 4.0
+    
+    /// X (Twitter) 貼文圖片圓角 (12pt)
+    public static let xTwitterMediaCornerRadius: CGFloat = 12.0
+    
+    /// Instagram 滿版寬度下，依據第一張圖片真實比例動態計算容器高度（支援 1.91:1 橫圖至 3:4 直圖）
+    public static func instagramMediaHeight(containerWidth: CGFloat, imageAspectRatio: CGFloat) -> CGFloat {
+        guard containerWidth > 0, imageAspectRatio > 0 else { return containerWidth }
+        let clampedAspect = min(max(imageAspectRatio, 0.75), 1.91)
+        return containerWidth / clampedAspect
+    }
+    
+    /// Threads 水平滾動多圖下，固定輪播高度，依據每張切片真實比例計算卡片尺寸
+    public static func threadsCarouselItemSize(carouselHeight: CGFloat, imageAspectRatio: CGFloat) -> CGSize {
+        guard carouselHeight > 0, imageAspectRatio > 0 else {
+            return CGSize(width: carouselHeight, height: carouselHeight)
+        }
+        let clampedAspect = min(max(imageAspectRatio, 0.5), 1.91)
+        return CGSize(width: carouselHeight * clampedAspect, height: carouselHeight)
+    }
+    
+    /// X (Twitter) 水平滾動多圖下，固定輪播高度，依據每張切片真實比例計算卡片尺寸
+    public static func xTwitterCarouselItemSize(carouselHeight: CGFloat, imageAspectRatio: CGFloat) -> CGSize {
+        guard carouselHeight > 0, imageAspectRatio > 0 else {
+            return CGSize(width: carouselHeight, height: carouselHeight)
+        }
+        let clampedAspect = min(max(imageAspectRatio, 0.5), 2.0)
+        return CGSize(width: carouselHeight * clampedAspect, height: carouselHeight)
+    }
+    
+    /// 計算單張 CGImage 的寬高比 (width / height)
+    private func aspectRatio(of image: CGImage) -> CGFloat {
+        guard image.height > 0 else { return 1.0 }
+        return CGFloat(image.width) / CGFloat(image.height)
     }
     
     public init(
@@ -69,74 +140,67 @@ public struct SNSPreviewView: View {
     
     public var body: some View {
         NavigationStack {
-            VStack(spacing: 14) {
-                // 1. 平台切換分段選擇器
-                Picker("發佈平台", selection: $selectedPlatform) {
-                    ForEach(SNSTargetPlatform.allCases) { p in
-                        Text(p.rawValue).tag(p)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.top, 8)
-                
-                // 2. Threads 捏合互動提示與控制按鈕
-                if selectedPlatform == .threads && displayImages.count > 1 {
-                    VStack(spacing: 6) {
-                        Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                isThreadsMerged.toggle()
-                            }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: isThreadsMerged ? "arrow.left.and.right" : "arrow.right.and.line.vertical.and.arrow.left")
-                                Text(isThreadsMerged ? "點擊展開分隔 (兩圖分開)" : "點擊捏合拼接 (合而為一)")
-                                    .font(.caption.bold())
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 7)
-                            .background(isThreadsMerged ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.06), in: Capsule())
-                            .foregroundStyle(isThreadsMerged ? Color.accentColor : Color.primary)
-                            .overlay(Capsule().stroke(isThreadsMerged ? Color.accentColor.opacity(0.4) : Color.primary.opacity(0.12), lineWidth: 1))
+            GeometryReader { geo in
+                let screenWidth = geo.size.width
+                VStack(spacing: 16) {
+                    // 1. 平台切換分段選擇器
+                    Picker("發佈平台", selection: $selectedPlatform) {
+                        ForEach(SNSTargetPlatform.allCases) { p in
+                            Text(p.rawValue).tag(p)
                         }
-                        .buttonStyle(.plain)
-                        
-                        Text("💡 支援雙指在圖片上捏合 (Pinch) 或點擊上方按鈕，即刻模擬 Threads 拼圖合體")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
                     }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
-                
-                Spacer(minLength: 4)
-                
-                // 3. 模擬社群貼文卡片
-                VStack(alignment: .leading, spacing: 10) {
-                    // 貼文作者資訊列
-                    postHeaderView
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                     
-                    // 圖片展示區 (依各平台真實機制渲染)
-                    switch selectedPlatform {
-                    case .instagram:
-                        instagramMediaView
-                    case .threads:
-                        threadsMediaView
-                    case .xTwitter:
-                        xTwitterMediaView
-                    case .redBook:
-                        redBookMediaView
+                    // 2. Threads 捏合互動提示與控制按鈕
+                    if selectedPlatform == .threads && displayImages.count > 1 {
+                        VStack(spacing: 6) {
+                            Button {
+                                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                                    isThreadsMerged.toggle()
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: isThreadsMerged ? "arrow.left.and.right" : "arrow.right.and.line.vertical.and.arrow.left")
+                                    Text(isThreadsMerged ? "點擊展開分隔 (兩圖分開)" : "點擊捏合拼接 (合而為一)")
+                                        .font(.caption.bold())
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 7)
+                                .background(isThreadsMerged ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.06), in: Capsule())
+                                .foregroundStyle(isThreadsMerged ? Color.accentColor : Color.primary)
+                                .overlay(Capsule().stroke(isThreadsMerged ? Color.accentColor.opacity(0.4) : Color.primary.opacity(0.12), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                            
+                            Text("支援雙指在圖片上捏合 (Pinch) 或點擊上方按鈕，模擬 Threads 拼圖合體")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     
-                    // 貼文互動按鈕列
-                    postActionBarView
+                    Spacer(minLength: 0)
+                    
+                    // 3. 純貼文圖片區域 (不顯示帳號或貼文文字，100% 依各平台實際圖片比例、邊距與圓角渲染)
+                    Group {
+                        switch selectedPlatform {
+                        case .instagram:
+                            instagramMediaView(screenWidth: screenWidth)
+                        case .threads:
+                            threadsMediaView(screenWidth: screenWidth)
+                        case .xTwitter:
+                            xTwitterMediaView(screenWidth: screenWidth)
+                        case .redBook:
+                            redBookMediaView(screenWidth: screenWidth)
+                        }
+                    }
+                    
+                    Spacer(minLength: 0)
                 }
-                .padding(.vertical, 12)
-                .background(Color(uiColor: .secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .padding(.horizontal)
-                
-                Spacer(minLength: 4)
             }
+            .background(Color(uiColor: .systemBackground))
             .navigationTitle("SNS 發佈預覽")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -147,175 +211,104 @@ public struct SNSPreviewView: View {
         }
     }
     
-    // MARK: - 各平台貼文頭部資訊
+    // MARK: - 1. Instagram 貼文圖片區 (100% 滿版寬度、0 圓角、依實際圖片比例動態決定高度、下方獨立置中圓點指示器)
     @ViewBuilder
-    private var postHeaderView: some View {
-        HStack(spacing: 10) {
-            switch selectedPlatform {
-            case .instagram:
-                // IG 彩色限動漸層光環頭像
-                Circle()
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [Color(hex: "#F58529"), Color(hex: "#DD2A7B"), Color(hex: "#8134AF")],
-                            startPoint: .bottomLeading,
-                            endPoint: .topTrailing
-                        ),
-                        lineWidth: 2
-                    )
-                    .background(Circle().fill(Color.accentColor.opacity(0.85)))
-                    .frame(width: 38, height: 38)
-                    .overlay {
-                        Image(systemName: "camera.fill")
-                            .foregroundStyle(.white)
-                            .font(.caption2)
-                    }
-                
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("pureaspect.frame")
-                        .font(.caption.bold())
-                    Text("Taipei, Taiwan")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                
-            case .threads:
-                // Threads 風格極簡黑色頭像
-                Circle()
-                    .fill(Color.primary.opacity(0.9))
-                    .frame(width: 36, height: 36)
-                    .overlay {
-                        Image(systemName: "at")
-                            .foregroundStyle(Color(uiColor: .systemBackground))
-                            .font(.caption.bold())
-                    }
-                
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 4) {
-                        Text("pureaspect")
-                            .font(.caption.bold())
-                        Text("2h")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    Text("Panorama split on Threads")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                
-            case .xTwitter:
-                // X (Twitter) 頭像
-                Circle()
-                    .fill(Color.black)
-                    .frame(width: 36, height: 36)
-                    .overlay {
-                        Image(systemName: "bolt.fill")
-                            .foregroundStyle(.white)
-                            .font(.caption)
-                    }
-                
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 4) {
-                        Text("PureAspect")
-                            .font(.caption.bold())
-                        Text("@pureaspect · 3h")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+    private func instagramMediaView(screenWidth: CGFloat) -> some View {
+        let firstAspect = displayImages.first.map { aspectRatio(of: $0) } ?? 1.0
+        let mediaHeight = Self.instagramMediaHeight(containerWidth: screenWidth, imageAspectRatio: firstAspect)
+        
+        VStack(spacing: 12) {
+            if displayImages.count > 1 {
+                TabView(selection: $instagramPageIndex) {
+                    ForEach(0..<displayImages.count, id: \.self) { idx in
+                        Image(decorative: displayImages[idx], scale: 1.0)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: screenWidth, height: mediaHeight)
+                            .clipped()
+                            .tag(idx)
                     }
                 }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(width: screenWidth, height: mediaHeight)
+                .clipShape(Rectangle()) // Instagram 貼文為 0 圓角、滿版無邊距
                 
-            case .redBook:
-                // 小紅書頭像
-                Circle()
-                    .fill(Color(hex: "#FF2442"))
-                    .frame(width: 36, height: 36)
-                    .overlay {
-                        Image(systemName: "sparkles")
-                            .foregroundStyle(.white)
-                            .font(.caption)
-                    }
-                
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("攝影美學筆記")
-                        .font(.caption.bold())
-                    Text("今日發布")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            
-            Spacer()
-            Image(systemName: "ellipsis")
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 12)
-    }
-    
-    // MARK: - Instagram 輪播展示 (單張獨立全寬、左右滑動換頁、右上角 1/N 標籤)
-    @ViewBuilder
-    private var instagramMediaView: some View {
-        if displayImages.count > 1 {
-            TabView(selection: $instagramPageIndex) {
-                ForEach(0..<displayImages.count, id: \.self) { idx in
-                    Image(decorative: displayImages[idx], scale: 1.0)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity, maxHeight: 330)
-                        .tag(idx)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .frame(height: 330)
-            .clipShape(Rectangle()) // Instagram 貼文為 0 圓角
-            .overlay(alignment: .topTrailing) {
-                Text("\(instagramPageIndex + 1)/\(displayImages.count)")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.black.opacity(0.65), in: Capsule())
-                    .padding(10)
-            }
-        } else if let img = displayImages.first {
-            Image(decorative: img, scale: 1.0)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity, maxHeight: 330)
-                .clipShape(Rectangle())
-        }
-    }
-    
-    // MARK: - Threads 雙圖捏合展示 (支援雙指 Pinch 捏合合體與展開)
-    @ViewBuilder
-    private var threadsMediaView: some View {
-        if displayImages.count > 1 {
-            HStack(spacing: Self.threadsGap(isMerged: isThreadsMerged)) {
-                ForEach(0..<displayImages.count, id: \.self) { idx in
-                    Image(decorative: displayImages[idx], scale: 1.0)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxHeight: 280)
-                        .clipShape(
-                            RoundedRectangle(
-                                cornerRadius: Self.threadsInnerCornerRadius(isMerged: isThreadsMerged),
-                                style: .continuous
+                // 圖片正下方獨立置中輪播圓點指示器
+                HStack(spacing: 5) {
+                    ForEach(0..<displayImages.count, id: \.self) { idx in
+                        let isActive = idx == instagramPageIndex
+                        let isEdge = (idx == displayImages.count - 1 || idx == 0) && displayImages.count >= 5 && !isActive
+                        Circle()
+                            .fill(isActive ? Color(red: 74/255, green: 93/255, blue: 249/255) : Color.secondary.opacity(0.38))
+                            .frame(
+                                width: isActive ? 6.0 : (isEdge ? 4.0 : 5.0),
+                                height: isActive ? 6.0 : (isEdge ? 4.0 : 5.0)
                             )
-                        )
+                    }
                 }
+            } else if let img = displayImages.first {
+                Image(decorative: img, scale: 1.0)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: screenWidth, height: mediaHeight)
+                    .clipShape(Rectangle())
             }
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .padding(.horizontal, 12)
-            .animation(.spring(response: 0.35, dampingFraction: 0.75), value: isThreadsMerged)
-            .gesture(
+        }
+    }
+    
+    // MARK: - 2. Threads 貼文圖片區 (多圖左留白 12pt 右出血水平滾動、依真實切片比例計算寬度、12pt 圓角、雙指捏合無縫合體)
+    @ViewBuilder
+    private func threadsMediaView(screenWidth: CGFloat) -> some View {
+        // 實機比例：carouselHeight = 397 / 472 * screenWidth (約 0.841 * screenWidth)
+        let baseCarouselHeight = round(screenWidth * (397.0 / 472.0))
+        
+        if displayImages.count > 1 {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Self.threadsGap(isMerged: isThreadsMerged)) {
+                    ForEach(0..<displayImages.count, id: \.self) { idx in
+                        let img = displayImages[idx]
+                        let ratio = aspectRatio(of: img)
+                        let itemSize = Self.threadsCarouselItemSize(
+                            carouselHeight: baseCarouselHeight,
+                            imageAspectRatio: ratio
+                        )
+                        let isFirst = idx == 0
+                        let isLast = idx == displayImages.count - 1
+                        let innerR = Self.threadsInnerCornerRadius(isMerged: isThreadsMerged)
+                        let shape = UnevenCornersRectangle(
+                            topLeading: isFirst ? 12 : innerR,
+                            bottomLeading: isFirst ? 12 : innerR,
+                            bottomTrailing: isLast ? 12 : innerR,
+                            topTrailing: isLast ? 12 : innerR
+                        )
+                        
+                        Image(decorative: img, scale: 1.0)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: itemSize.width, height: itemSize.height)
+                            .clipShape(shape)
+                            .overlay(
+                                shape.stroke(
+                                    Color.primary.opacity(isThreadsMerged ? 0.0 : 0.12),
+                                    lineWidth: 0.5
+                                )
+                            )
+                    }
+                }
+                .padding(.leading, 12)
+                .padding(.trailing, 12)
+                .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isThreadsMerged)
+            }
+            .simultaneousGesture(
                 MagnificationGesture()
                     .onChanged { scale in
                         threadsPinchScale = scale
-                        if scale < 0.9 && !isThreadsMerged {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        if scale < 0.92 && !isThreadsMerged {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) {
                                 isThreadsMerged = true
                             }
-                        } else if scale > 1.15 && isThreadsMerged {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        } else if scale > 1.12 && isThreadsMerged {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) {
                                 isThreadsMerged = false
                             }
                         }
@@ -325,165 +318,119 @@ public struct SNSPreviewView: View {
                     }
             )
         } else if let img = displayImages.first {
+            let availableW = screenWidth - 24
+            let ratio = min(max(aspectRatio(of: img), 0.75), 1.91)
+            let singleH = availableW / ratio
             Image(decorative: img, scale: 1.0)
                 .resizable()
-                .scaledToFit()
-                .frame(maxHeight: 290)
+                .scaledToFill()
+                .frame(width: availableW, height: singleH)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.primary.opacity(0.12), lineWidth: 0.5)
+                )
                 .padding(.horizontal, 12)
         }
     }
     
-    // MARK: - X (Twitter) 左右分欄展示
+    // MARK: - 3. X (Twitter) 貼文圖片區 (多圖左留白 10pt 右出血水平滾動、4pt 間隙、12pt 圓角、依真實切片比例計算寬度)
     @ViewBuilder
-    private var xTwitterMediaView: some View {
+    private func xTwitterMediaView(screenWidth: CGFloat) -> some View {
+        // 實機比例：carouselHeight = 399 / 472 * screenWidth (約 0.845 * screenWidth)
+        let baseCarouselHeight = round(screenWidth * (399.0 / 472.0))
+        
         if displayImages.count > 1 {
-            HStack(spacing: 4) {
-                ForEach(0..<min(displayImages.count, 4), id: \.self) { idx in
-                    Image(decorative: displayImages[idx], scale: 1.0)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxHeight: 260)
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .padding(.horizontal, 12)
-        } else if let img = displayImages.first {
-            Image(decorative: img, scale: 1.0)
-                .resizable()
-                .scaledToFit()
-                .frame(maxHeight: 280)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .padding(.horizontal, 12)
-        }
-    }
-    
-    // MARK: - 小紅書 輪播展示
-    @ViewBuilder
-    private var redBookMediaView: some View {
-        if displayImages.count > 1 {
-            TabView(selection: $instagramPageIndex) {
-                ForEach(0..<displayImages.count, id: \.self) { idx in
-                    Image(decorative: displayImages[idx], scale: 1.0)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity, maxHeight: 310)
-                        .tag(idx)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .frame(height: 310)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .padding(.horizontal, 12)
-            .overlay(alignment: .topTrailing) {
-                Text("\(instagramPageIndex + 1)/\(displayImages.count)")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3.5)
-                    .background(Color.black.opacity(0.6), in: Capsule())
-                    .padding(.trailing, 20)
-                    .padding(.top, 8)
-            }
-        } else if let img = displayImages.first {
-            Image(decorative: img, scale: 1.0)
-                .resizable()
-                .scaledToFit()
-                .frame(maxHeight: 310)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .padding(.horizontal, 12)
-        }
-    }
-    
-    // MARK: - 各平台互動按鈕列
-    @ViewBuilder
-    private var postActionBarView: some View {
-        switch selectedPlatform {
-        case .instagram:
-            HStack(spacing: 16) {
-                Image(systemName: "heart")
-                Image(systemName: "bubble.right")
-                Image(systemName: "paperplane")
-                
-                Spacer()
-                
-                // IG 輪播圓點指示器 (Active 為藍色，Inactive 為淺灰)
-                if displayImages.count > 1 {
-                    HStack(spacing: 4) {
-                        ForEach(0..<displayImages.count, id: \.self) { idx in
-                            Circle()
-                                .fill(idx == instagramPageIndex ? Color(hex: "#0095F6") : Color.secondary.opacity(0.35))
-                                .frame(width: idx == instagramPageIndex ? 6 : 5, height: idx == instagramPageIndex ? 6 : 5)
-                        }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Self.xTwitterCarouselGap) {
+                    ForEach(0..<displayImages.count, id: \.self) { idx in
+                        let img = displayImages[idx]
+                        let ratio = aspectRatio(of: img)
+                        let itemSize = Self.xTwitterCarouselItemSize(
+                            carouselHeight: baseCarouselHeight,
+                            imageAspectRatio: ratio
+                        )
+                        Image(decorative: img, scale: 1.0)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: itemSize.width, height: itemSize.height)
+                            .clipShape(RoundedRectangle(cornerRadius: Self.xTwitterMediaCornerRadius, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Self.xTwitterMediaCornerRadius, style: .continuous)
+                                    .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
+                            )
                     }
                 }
+                .padding(.leading, 10)
+                .padding(.trailing, 10)
+            }
+        } else if let img = displayImages.first {
+            let availableW = screenWidth - 20
+            let ratio = min(max(aspectRatio(of: img), 0.75), 2.0)
+            let singleH = availableW / ratio
+            Image(decorative: img, scale: 1.0)
+                .resizable()
+                .scaledToFill()
+                .frame(width: availableW, height: singleH)
+                .clipShape(RoundedRectangle(cornerRadius: Self.xTwitterMediaCornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Self.xTwitterMediaCornerRadius, style: .continuous)
+                        .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
+                )
+                .padding(.horizontal, 10)
+        }
+    }
+    
+    // MARK: - 4. 小紅書 貼文圖片區 (依實際比例動態高度、輪播翻頁、8pt 圓角與圓點指示器)
+    @ViewBuilder
+    private func redBookMediaView(screenWidth: CGFloat) -> some View {
+        let availableW = screenWidth - 24
+        let firstAspect = displayImages.first.map { aspectRatio(of: $0) } ?? 0.75
+        let clampedAspect = min(max(firstAspect, 0.75), 1.33)
+        let mediaHeight = availableW / clampedAspect
+        
+        VStack(spacing: 12) {
+            if displayImages.count > 1 {
+                TabView(selection: $instagramPageIndex) {
+                    ForEach(0..<displayImages.count, id: \.self) { idx in
+                        Image(decorative: displayImages[idx], scale: 1.0)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: availableW, height: mediaHeight)
+                            .clipped()
+                            .tag(idx)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(width: availableW, height: mediaHeight)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(.horizontal, 12)
+                .overlay(alignment: .topTrailing) {
+                    Text("\(instagramPageIndex + 1)/\(displayImages.count)")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.6), in: Capsule())
+                        .padding(.trailing, 22)
+                        .padding(.top, 10)
+                }
                 
-                Spacer()
-                
-                Image(systemName: "bookmark")
+                HStack(spacing: 5) {
+                    ForEach(0..<displayImages.count, id: \.self) { idx in
+                        Circle()
+                            .fill(idx == instagramPageIndex ? Color(hex: "#FF2442") : Color.secondary.opacity(0.35))
+                            .frame(width: 5.5, height: 5.5)
+                    }
+                }
+            } else if let img = displayImages.first {
+                Image(decorative: img, scale: 1.0)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: availableW, height: mediaHeight)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .padding(.horizontal, 12)
             }
-            .font(.subheadline)
-            .padding(.horizontal, 12)
-            .padding(.top, 4)
-            
-        case .threads:
-            HStack(spacing: 18) {
-                Image(systemName: "heart")
-                Image(systemName: "bubble.right")
-                Image(systemName: "arrow.2.squarepath")
-                Image(systemName: "paperplane")
-                Spacer()
-            }
-            .font(.subheadline)
-            .padding(.horizontal, 12)
-            .padding(.top, 4)
-            
-        case .xTwitter:
-            HStack(spacing: 0) {
-                HStack(spacing: 4) {
-                    Image(systemName: "bubble.left")
-                    Text("12").font(.caption2)
-                }
-                Spacer()
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.2.squarepath")
-                    Text("48").font(.caption2)
-                }
-                Spacer()
-                HStack(spacing: 4) {
-                    Image(systemName: "heart")
-                    Text("356").font(.caption2)
-                }
-                Spacer()
-                Image(systemName: "bookmark")
-                Spacer()
-                Image(systemName: "square.and.arrow.up")
-            }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 12)
-            .padding(.top, 4)
-            
-        case .redBook:
-            HStack(spacing: 16) {
-                HStack(spacing: 4) {
-                    Image(systemName: "heart")
-                    Text("點讚").font(.caption2)
-                }
-                HStack(spacing: 4) {
-                    Image(systemName: "star")
-                    Text("收藏").font(.caption2)
-                }
-                HStack(spacing: 4) {
-                    Image(systemName: "bubble.right")
-                    Text("評論").font(.caption2)
-                }
-                Spacer()
-            }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 12)
-            .padding(.top, 4)
         }
     }
 }

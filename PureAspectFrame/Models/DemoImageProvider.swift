@@ -97,6 +97,16 @@ public struct DemoImageProvider {
         return context.makeImage()!
     }
     
+    public static func makeDemoSplitSlices(width: Int = 1422, height: Int = 1067, count: Int = 2) -> [CGImage] {
+        let full = makeDemoImage(width: width, height: height)
+        guard count > 1 else { return [full] }
+        let sliceW = CGFloat(width) / CGFloat(count)
+        return (0..<count).compactMap { idx in
+            let rect = CGRect(x: CGFloat(idx) * sliceW, y: 0, width: sliceW, height: CGFloat(height))
+            return full.cropping(to: rect)
+        }
+    }
+
     public static var demoExif: ExifMetadata {
         ExifMetadata(
             make: "LEICA CAMERA AG",

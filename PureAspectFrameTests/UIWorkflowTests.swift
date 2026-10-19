@@ -467,5 +467,38 @@ struct UIWorkflowTests {
         )
         _ = view
     }
+
+    @Test func testSNSPreviewDynamicAspectRatioCalculations() {
+        // 1. Instagram 滿版寬度下依實際圖片比例動態計算高度 (1.91:1 ~ 3:4 範圍)
+        let screenWidth: CGFloat = 400.0
+        // 3:2 橫圖 (1.5) -> 400 / 1.5 = 266.67
+        let igLandscapeH = SNSPreviewView.instagramMediaHeight(containerWidth: screenWidth, imageAspectRatio: 1.5)
+        #expect(abs(igLandscapeH - 266.666) < 0.1)
+
+        // 1:1 方圖 (1.0) -> 400
+        let igSquareH = SNSPreviewView.instagramMediaHeight(containerWidth: screenWidth, imageAspectRatio: 1.0)
+        #expect(abs(igSquareH - 400.0) < 0.1)
+
+        // 4:5 直圖 (0.8) -> 400 / 0.8 = 500
+        let igPortraitH = SNSPreviewView.instagramMediaHeight(containerWidth: screenWidth, imageAspectRatio: 0.8)
+        #expect(abs(igPortraitH - 500.0) < 0.1)
+
+        // 2. Threads 水平滾動多圖：固定輪播高度下，每張切片寬度依圖片真實比例動態計算
+        let threadsH: CGFloat = 330.0
+        let threads2x3Size = SNSPreviewView.threadsCarouselItemSize(carouselHeight: threadsH, imageAspectRatio: 2.0 / 3.0)
+        #expect(abs(threads2x3Size.width - 220.0) < 0.1)
+        #expect(abs(threads2x3Size.height - 330.0) < 0.1)
+
+        let threads4x5Size = SNSPreviewView.threadsCarouselItemSize(carouselHeight: threadsH, imageAspectRatio: 0.8)
+        #expect(abs(threads4x5Size.width - 264.0) < 0.1)
+
+        // 3. X (Twitter) 水平滾動多圖：固定高度下依實際比例計算寬度，且多圖間隙為 4pt、圓角為 12pt
+        let xH: CGFloat = 330.0
+        let x2x3Size = SNSPreviewView.xTwitterCarouselItemSize(carouselHeight: xH, imageAspectRatio: 2.0 / 3.0)
+        #expect(abs(x2x3Size.width - 220.0) < 0.1)
+        #expect(abs(x2x3Size.height - 330.0) < 0.1)
+        #expect(SNSPreviewView.xTwitterCarouselGap == 4.0)
+        #expect(SNSPreviewView.xTwitterMediaCornerRadius == 12.0)
+    }
 }
 
