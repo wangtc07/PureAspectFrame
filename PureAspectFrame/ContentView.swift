@@ -6,6 +6,23 @@ public struct ContentView: View {
     public var body: some View {
         if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Settings") {
             SettingsView()
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-FooterTab-TwoSpacers") {
+            let img = DemoImageProvider.makeDemoImage()
+            EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .footer, initialFooterSettings: {
+                var f = FooterSettings()
+                f.activeItems = [.logo, .camera, .spacer, .parameters, .spacer]
+                return f
+            }())
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-FooterTab-NoSpacer") {
+            let img = DemoImageProvider.makeDemoImage()
+            EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .footer, initialFooterSettings: {
+                var f = FooterSettings()
+                f.activeItems = [.logo, .camera, .parameters]
+                return f
+            }())
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-FooterTab") {
+            let img = DemoImageProvider.makeDemoImage()
+            EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .footer)
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-BorderTab-TwoGroups") {
             let img = DemoImageProvider.makeDemoImage()
             EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .border, initialBorderSettings: {

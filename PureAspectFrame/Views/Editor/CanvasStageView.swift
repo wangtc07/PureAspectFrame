@@ -159,18 +159,27 @@ public struct CanvasStageView: View {
                             
                             // 底欄內容
                             if footerSettings.isEnabled {
-                                HStack {
-                                    if footerSettings.activeItems.contains(.logo) {
-                                        CameraBrandLogoView(brand: exifMetadata.detectedBrand, height: cH * CGFloat(footerSettings.fontSizeScale) * 0.9)
-                                    }
-                                    if footerSettings.activeItems.contains(.camera) && !exifMetadata.cameraDisplayString.isEmpty {
-                                        Text(exifMetadata.cameraDisplayString)
-                                            .font(.system(size: cH * CGFloat(footerSettings.fontSizeScale), weight: .semibold))
-                                    }
-                                    Spacer()
-                                    if footerSettings.activeItems.contains(.parameters) && !exifMetadata.parametersDisplayString.isEmpty {
-                                        Text(exifMetadata.parametersDisplayString)
-                                            .font(.system(size: cH * CGFloat(footerSettings.fontSizeScale), weight: .medium, design: .monospaced))
+                                let sections = footerSettings.layoutSections
+                                let fontScaledSize = cH * CGFloat(footerSettings.fontSizeScale)
+                                
+                                HStack(spacing: 8) {
+                                    if sections.count <= 1 {
+                                        // 0 Spacers: 置中
+                                        Spacer()
+                                        footerSectionView(items: sections.first ?? [], fontSize: fontScaledSize)
+                                        Spacer()
+                                    } else if sections.count == 2 {
+                                        // 1 Spacer: 左右對齊
+                                        footerSectionView(items: sections[0], fontSize: fontScaledSize)
+                                        Spacer()
+                                        footerSectionView(items: sections[1], fontSize: fontScaledSize)
+                                    } else {
+                                        // 2 Spacers 或以上: 3 段式 (左、中、右)
+                                        footerSectionView(items: sections[0], fontSize: fontScaledSize)
+                                        Spacer()
+                                        footerSectionView(items: sections[1], fontSize: fontScaledSize)
+                                        Spacer()
+                                        footerSectionView(items: sections[2], fontSize: fontScaledSize)
                                     }
                                 }
                                 .padding(.horizontal, 4)
@@ -241,6 +250,57 @@ public struct CanvasStageView: View {
         }
     }
     
+    // MARK: - 底欄 Section 渲染輔助
+    @ViewBuilder
+    private func footerSectionView(items: [FooterItemType], fontSize: CGFloat) -> some View {
+        HStack(spacing: 6) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                switch item {
+                case .logo:
+                    CameraBrandLogoView(brand: exifMetadata.detectedBrand, height: fontSize * 0.9)
+                case .camera:
+                    if !exifMetadata.cameraDisplayString.isEmpty {
+                        Text(exifMetadata.cameraDisplayString)
+                            .font(.system(size: fontSize, weight: .semibold))
+                            .lineLimit(1)
+                    }
+                case .lens:
+                    if !exifMetadata.lensDisplayString.isEmpty {
+                        Text(exifMetadata.lensDisplayString)
+                            .font(.system(size: fontSize, weight: .regular))
+                            .lineLimit(1)
+                    }
+                case .parameters:
+                    if !exifMetadata.parametersDisplayString.isEmpty {
+                        Text(exifMetadata.parametersDisplayString)
+                            .font(.system(size: fontSize, weight: .medium, design: .monospaced))
+                            .lineLimit(1)
+                    }
+                case .date:
+                    if let date = exifMetadata.dateTimeOriginal {
+                        Text(formatDate(date))
+                            .font(.system(size: fontSize, weight: .regular, design: .monospaced))
+                            .lineLimit(1)
+                    }
+                case .customText:
+                    if !footerSettings.customText.isEmpty {
+                        Text(footerSettings.customText)
+                            .font(.system(size: fontSize, weight: .medium))
+                            .lineLimit(1)
+                    }
+                case .spacer:
+                    EmptyView()
+                }
+            }
+        }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy.MM.dd"
+        return df.string(from: date)
+    }
+    
     // MARK: - 白框四邊距離標線與可編輯數字標籤
     @ViewBuilder
     private func distanceMarkersOverlay(
@@ -254,7 +314,7 @@ public struct CanvasStageView: View {
         photoHeight: CGFloat
     ) -> some View {
         let footerHeight: CGFloat = footerSettings.isEnabled ? (cH * CGFloat(footerSettings.fontSizeScale) * 2.8) : 0
-        return ZStack {
+        ZStack {
             let maxRange: CGFloat = borderSettings.unit == .percent ? 40 : 300
             
             // 上方尺標標線與標籤

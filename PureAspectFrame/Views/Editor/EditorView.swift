@@ -55,13 +55,21 @@ public struct EditorView: View {
         self._showDistanceMarkers = State(initialValue: initialShowDistanceMarkers)
     }
     
-    public init(sourceImage: CGImage, initialExif: ExifMetadata = ExifMetadata(), initialTab: EditorTab = .ratio, initialShowDistanceMarkers: Bool = false, initialBorderSettings: BorderSettings = BorderSettings()) {
+    public init(
+        sourceImage: CGImage,
+        initialExif: ExifMetadata = ExifMetadata(),
+        initialTab: EditorTab = .ratio,
+        initialShowDistanceMarkers: Bool = false,
+        initialBorderSettings: BorderSettings = BorderSettings(),
+        initialFooterSettings: FooterSettings = FooterSettings()
+    ) {
         self._sourceImage = .constant(sourceImage)
         self.initialExif = initialExif
         self._exifMetadata = State(initialValue: initialExif)
         self._selectedTab = State(initialValue: initialTab)
         self._showDistanceMarkers = State(initialValue: initialShowDistanceMarkers)
         self._borderSettings = State(initialValue: initialBorderSettings)
+        self._footerSettings = State(initialValue: initialFooterSettings)
     }
     
     public var body: some View {
@@ -166,7 +174,7 @@ public struct EditorView: View {
                                 )
                             }
                         }
-                        .frame(height: 240)
+                        .frame(height: 295)
                     }
                     .background(Color(uiColor: .secondarySystemBackground))
                     .transition(.move(edge: .bottom).combined(with: .opacity))

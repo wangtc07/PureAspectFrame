@@ -233,37 +233,34 @@ public final class ImageRendererService: Sendable {
         exif: ExifMetadata,
         canvasWidth: CGFloat
     ) {
-        var leftParts: [String] = []
-        var rightParts: [String] = []
+        let sections = settings.layoutSections
         
-        for item in settings.activeItems {
-            switch item {
-            case .logo:
-                // 標誌文字代號或名稱
-                leftParts.append(exif.detectedBrand != .unknown ? exif.detectedBrand.rawValue : (exif.make ?? ""))
-            case .camera:
-                if !exif.cameraDisplayString.isEmpty {
-                    leftParts.append(exif.cameraDisplayString)
-                }
-            case .lens:
-                if !exif.lensDisplayString.isEmpty {
-                    rightParts.append(exif.lensDisplayString)
-                }
-            case .parameters:
-                if !exif.parametersDisplayString.isEmpty {
-                    rightParts.append(exif.parametersDisplayString)
-                }
-            case .date:
-                if let date = exif.dateTimeOriginal {
-                    let df = DateFormatter()
-                    df.dateFormat = "yyyy.MM.dd"
-                    rightParts.append(df.string(from: date))
-                }
-            case .customText:
-                if !settings.customText.isEmpty {
-                    leftParts.append(settings.customText)
+        func textForItems(_ items: [FooterItemType]) -> String {
+            var parts: [String] = []
+            for item in items {
+                switch item {
+                case .logo:
+                    let brandStr = exif.detectedBrand != .unknown ? exif.detectedBrand.rawValue : (exif.make ?? "")
+                    if !brandStr.isEmpty { parts.append(brandStr) }
+                case .camera:
+                    if !exif.cameraDisplayString.isEmpty { parts.append(exif.cameraDisplayString) }
+                case .lens:
+                    if !exif.lensDisplayString.isEmpty { parts.append(exif.lensDisplayString) }
+                case .parameters:
+                    if !exif.parametersDisplayString.isEmpty { parts.append(exif.parametersDisplayString) }
+                case .date:
+                    if let date = exif.dateTimeOriginal {
+                        let df = DateFormatter()
+                        df.dateFormat = "yyyy.MM.dd"
+                        parts.append(df.string(from: date))
+                    }
+                case .customText:
+                    if !settings.customText.isEmpty { parts.append(settings.customText) }
+                case .spacer:
+                    break
                 }
             }
+            return parts.filter { !$0.isEmpty }.joined(separator: "  |  ")
         }
         
         #if canImport(UIKit)
@@ -286,36 +283,105 @@ public final class ImageRendererService: Sendable {
             .foregroundColor: textColor
         ]
         
-        let leftText = leftParts.filter { !$0.isEmpty }.joined(separator: "  |  ")
-        let rightText = rightParts.filter { !$0.isEmpty }.joined(separator: "  ")
-        
-        var leftSize = (leftText as NSString).size(withAttributes: attributes)
-        var rightSize = (rightText as NSString).size(withAttributes: attributes)
-        
-        // Dynamically reduce font size if footer width is tight
-        while (leftSize.width + rightSize.width + 24 > footerRect.width) && currentFontSize > 7 {
-            currentFontSize -= 1
-            font = UIFont.systemFont(ofSize: currentFontSize, weight: .medium)
-            attributes[.font] = font
-            leftSize = (leftText as NSString).size(withAttributes: attributes)
-            rightSize = (rightText as NSString).size(withAttributes: attributes)
+        if sections.count <= 1 {
+            // 0 Spacers: 全部置中
+            let centerText = sections.first.map(textForItems) ?? ""
+            guard !centerText.isEmpty else { return }
+            
+            var centerSize = (centerText as NSString).size(withAttributes: attributes)
+            while centerSize.width > footerRect.width && currentFontSize > 7 {
+                currentFontSize -= 1
+                font = UIFont.systemFont(ofSize: currentFontSize, weight: .medium)
+                attributes[.font] = font
+                centerSize = (centerText as NSString).size(withAttributes: attributes)
+            }
+            
+            context.saveGState()
+            context.translateBy(x: 0, y: footerRect.maxY)
+            context.scaleBy(x: 1.0, y: -1.0)
+            UIGraphicsPushContext(context)
+            let point = CGPoint(
+                x: footerRect.minX + max(0, (footerRect.width - centerSize.width) / 2.0),
+                y: (footerRect.height - centerSize.height) / 2.0
+            )
+            (centerText as NSString).draw(at: point, withAttributes: attributes)
+            UIGraphicsPopContext()
+            context.restoreGState()
+            
+        } else if sections.count == 2 {
+            // 1 Spacer: 左右對齊
+            let leftText = textForItems(sections[0])
+            let rightText = textForItems(sections[1])
+            
+            var leftSize = (leftText as NSString).size(withAttributes: attributes)
+            var rightSize = (rightText as NSString).size(withAttributes: attributes)
+            
+            while (leftSize.width + rightSize.width + 16 > footerRect.width) && currentFontSize > 7 {
+                currentFontSize -= 1
+                font = UIFont.systemFont(ofSize: currentFontSize, weight: .medium)
+                attributes[.font] = font
+                leftSize = (leftText as NSString).size(withAttributes: attributes)
+                rightSize = (rightText as NSString).size(withAttributes: attributes)
+            }
+            
+            context.saveGState()
+            context.translateBy(x: 0, y: footerRect.maxY)
+            context.scaleBy(x: 1.0, y: -1.0)
+            UIGraphicsPushContext(context)
+            if !leftText.isEmpty {
+                let leftPoint = CGPoint(x: footerRect.minX, y: (footerRect.height - leftSize.height) / 2.0)
+                (leftText as NSString).draw(at: leftPoint, withAttributes: attributes)
+            }
+            if !rightText.isEmpty {
+                let rightPoint = CGPoint(x: footerRect.maxX - rightSize.width, y: (footerRect.height - rightSize.height) / 2.0)
+                (rightText as NSString).draw(at: rightPoint, withAttributes: attributes)
+            }
+            UIGraphicsPopContext()
+            context.restoreGState()
+            
+        } else {
+            // 2 Spacers 或以上: 3 段式 (左、中、右)
+            let leftText = textForItems(sections[0])
+            let centerText = textForItems(sections[1])
+            let rightText = textForItems(sections[2])
+            
+            var leftSize = (leftText as NSString).size(withAttributes: attributes)
+            var centerSize = (centerText as NSString).size(withAttributes: attributes)
+            var rightSize = (rightText as NSString).size(withAttributes: attributes)
+            
+            var totalContentW = [leftSize.width, centerSize.width, rightSize.width].filter { $0 > 0 }.reduce(0, +)
+            while (totalContentW + 24 > footerRect.width) && currentFontSize > 7 {
+                currentFontSize -= 1
+                font = UIFont.systemFont(ofSize: currentFontSize, weight: .medium)
+                attributes[.font] = font
+                leftSize = (leftText as NSString).size(withAttributes: attributes)
+                centerSize = (centerText as NSString).size(withAttributes: attributes)
+                rightSize = (rightText as NSString).size(withAttributes: attributes)
+                totalContentW = [leftSize.width, centerSize.width, rightSize.width].filter { $0 > 0 }.reduce(0, +)
+            }
+            
+            context.saveGState()
+            context.translateBy(x: 0, y: footerRect.maxY)
+            context.scaleBy(x: 1.0, y: -1.0)
+            UIGraphicsPushContext(context)
+            if !leftText.isEmpty {
+                let leftPoint = CGPoint(x: footerRect.minX, y: (footerRect.height - leftSize.height) / 2.0)
+                (leftText as NSString).draw(at: leftPoint, withAttributes: attributes)
+            }
+            if !centerText.isEmpty {
+                let centerPoint = CGPoint(
+                    x: footerRect.minX + max(0, (footerRect.width - centerSize.width) / 2.0),
+                    y: (footerRect.height - centerSize.height) / 2.0
+                )
+                (centerText as NSString).draw(at: centerPoint, withAttributes: attributes)
+            }
+            if !rightText.isEmpty {
+                let rightPoint = CGPoint(x: footerRect.maxX - rightSize.width, y: (footerRect.height - rightSize.height) / 2.0)
+                (rightText as NSString).draw(at: rightPoint, withAttributes: attributes)
+            }
+            UIGraphicsPopContext()
+            context.restoreGState()
         }
-        
-        context.saveGState()
-        // CoreGraphics origin is bottom-left, Y going up.
-        // UIKit NSString.draw assumes origin is top-left, Y going down.
-        // Flip vertically inside footerRect so text draws right-side up.
-        context.translateBy(x: 0, y: footerRect.maxY)
-        context.scaleBy(x: 1.0, y: -1.0)
-        
-        UIGraphicsPushContext(context)
-        let leftPoint = CGPoint(x: footerRect.minX, y: (footerRect.height - leftSize.height) / 2.0)
-        (leftText as NSString).draw(at: leftPoint, withAttributes: attributes)
-        
-        let rightPoint = CGPoint(x: footerRect.maxX - rightSize.width, y: (footerRect.height - rightSize.height) / 2.0)
-        (rightText as NSString).draw(at: rightPoint, withAttributes: attributes)
-        UIGraphicsPopContext()
-        context.restoreGState()
         #endif
     }
     

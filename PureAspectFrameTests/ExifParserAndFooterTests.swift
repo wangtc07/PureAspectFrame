@@ -45,5 +45,98 @@ struct ExifParserAndFooterTests {
         #expect(!unused.contains(.camera))
         #expect(unused.contains(.lens))
         #expect(unused.contains(.parameters))
+        #expect(unused.contains(.spacer))
+    }
+
+    @Test func testSpacerFooterItemLimit() {
+        // When there is 0 spacer, warehouse has .spacer
+        var settings = FooterSettings()
+        settings.activeItems = [.logo, .camera]
+        #expect(settings.availableUnusedItems.contains(.spacer))
+
+        // When there is 1 spacer, warehouse still allows adding a 2nd spacer
+        settings.activeItems = [.logo, .spacer, .camera]
+        #expect(settings.availableUnusedItems.contains(.spacer))
+
+        // When there are 2 spacers, warehouse hides .spacer (max 2 spacers)
+        settings.activeItems = [.logo, .spacer, .camera, .spacer]
+        #expect(!settings.availableUnusedItems.contains(.spacer))
+    }
+
+    @Test func testFooterSectionsLayoutAlgorithm() {
+        var settings = FooterSettings()
+
+        // 1. 0 Spacers -> 1 section, 預設置中 (All in section 0)
+        settings.activeItems = [.logo, .camera, .parameters]
+        var sections = settings.layoutSections
+        #expect(sections.count == 1)
+        #expect(sections[0] == [.logo, .camera, .parameters])
+
+        // 2. 1 Spacer in middle -> 2 sections (Left, Right)
+        settings.activeItems = [.logo, .camera, .spacer, .parameters]
+        sections = settings.layoutSections
+        #expect(sections.count == 2)
+        #expect(sections[0] == [.logo, .camera])
+        #expect(sections[1] == [.parameters])
+
+        // 3. 2 Spacers (middle and end) -> 3 sections: Left + Center (Right empty) -> 置左 + 置中
+        settings.activeItems = [.logo, .camera, .spacer, .parameters, .spacer]
+        sections = settings.layoutSections
+        #expect(sections.count == 3)
+        #expect(sections[0] == [.logo, .camera])
+        #expect(sections[1] == [.parameters])
+        #expect(sections[2] == [])
+
+        // 4. 2 Spacers (beginning and middle) -> 3 sections: Center + Right (Left empty) -> 置中 + 置右
+        settings.activeItems = [.spacer, .camera, .spacer, .parameters]
+        sections = settings.layoutSections
+        #expect(sections.count == 3)
+        #expect(sections[0] == [])
+        #expect(sections[1] == [.camera])
+        #expect(sections[2] == [.parameters])
+
+        // 5. 2 Spacers (middle and middle) -> 3 sections: Left + Center + Right
+        settings.activeItems = [.logo, .spacer, .camera, .spacer, .parameters]
+        sections = settings.layoutSections
+        #expect(sections.count == 3)
+        #expect(sections[0] == [.logo])
+        #expect(sections[1] == [.camera])
+        #expect(sections[2] == [.parameters])
+    }
+
+    @Test func testFooterMoveItem() {
+        var settings = FooterSettings()
+        settings.activeItems = [.logo, .camera, .spacer, .parameters]
+        
+        // 測試將第 3 個 (parameters) 往前移到第 0 個位置
+        settings.moveItem(from: 3, to: 0)
+        #expect(settings.activeItems == [.parameters, .logo, .camera, .spacer])
+
+        // 測試將第 0 個移到第 2 個位置
+        settings.moveItem(from: 0, to: 2)
+        #expect(settings.activeItems == [.logo, .camera, .parameters, .spacer])
+    }
+
+    @Test func testFooterSwapAndAddItem() {
+        var settings = FooterSettings()
+        settings.activeItems = [.logo, .camera]
+        
+        // 測試交換相鄰位置
+        settings.swapItems(at: 0, with: 1)
+        #expect(settings.activeItems == [.camera, .logo])
+        
+        // 測試加入重複積木（一般積木不重複加入）
+        settings.addItem(.camera)
+        #expect(settings.activeItems == [.camera, .logo])
+        
+        // 測試加入 spacer（最多 2 個）
+        settings.addItem(.spacer)
+        #expect(settings.activeItems == [.camera, .logo, .spacer])
+        settings.addItem(.spacer)
+        #expect(settings.activeItems == [.camera, .logo, .spacer, .spacer])
+        // 第 3 個 spacer 應被阻擋
+        settings.addItem(.spacer)
+        #expect(settings.activeItems == [.camera, .logo, .spacer, .spacer])
     }
 }
+
