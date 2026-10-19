@@ -16,6 +16,26 @@ public enum FooterItemType: String, CaseIterable, Identifiable, Codable, Sendabl
         self == .spacer
     }
     
+    /// 檢查該積木在目前照片中是否具備有效資訊（若無資訊則應於倉庫禁選）
+    public func hasAvailableInformation(exif: ExifMetadata, customText: String = "") -> Bool {
+        switch self {
+        case .logo:
+            return exif.detectedBrand != .unknown || !(exif.make?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        case .camera:
+            return !exif.cameraDisplayString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .lens:
+            return !exif.lensDisplayString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .parameters:
+            return !exif.parametersDisplayString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .date:
+            return exif.dateTimeOriginal != nil
+        case .customText:
+            return !customText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .spacer:
+            return true
+        }
+    }
+    
     /// 取得尚未被使用的積木列表（下方倉庫動態過濾，spacer 最多可使用 2 個）
     public static func unusedItems(active: [FooterItemType]) -> [FooterItemType] {
         var list = allCases.filter { $0 != .spacer && !active.contains($0) }
@@ -41,8 +61,8 @@ public struct FooterSettings: Codable, Equatable, Sendable {
     /// 底欄字體大小比例（相對於畫布基準高度，例如 0.018 ~ 0.035）
     public var fontSizeScale: Double = 0.024
     
-    /// 底欄文字顏色（自訂十六進位值或黑白）
-    public var textColorHex: String = "#333333"
+    /// 底欄文字顏色（自訂十六進位值，預設為灰色 #8E8E93 以搭配白底）
+    public var textColorHex: String = "#8E8E93"
     
     public init() {}
     
@@ -82,8 +102,11 @@ public struct FooterSettings: Codable, Equatable, Sendable {
         activeItems.swapAt(i, j)
     }
     
-    /// 新增積木至底欄（spacer 最多 2 個，其他積木不重複）
-    public mutating func addItem(_ item: FooterItemType) {
+    /// 新增積木至底欄（若提供 exif 則驗證是否具備資訊，spacer 最多 2 個，其他積木不重複）
+    public mutating func addItem(_ item: FooterItemType, exif: ExifMetadata? = nil) {
+        if let exif = exif {
+            guard item.hasAvailableInformation(exif: exif, customText: customText) else { return }
+        }
         if item == .spacer {
             let currentSpacers = activeItems.filter { $0 == .spacer }.count
             guard currentSpacers < 2 else { return }

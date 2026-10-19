@@ -138,5 +138,57 @@ struct ExifParserAndFooterTests {
         settings.addItem(.spacer)
         #expect(settings.activeItems == [.camera, .logo, .spacer, .spacer])
     }
+
+    // MARK: - 底欄無資訊禁選與文字顏色測試 (TDD)
+    @Test func testFooterItemHasAvailableInformation() {
+        let emptyExif = ExifMetadata()
+        #expect(!FooterItemType.logo.hasAvailableInformation(exif: emptyExif))
+        #expect(!FooterItemType.camera.hasAvailableInformation(exif: emptyExif))
+        #expect(!FooterItemType.lens.hasAvailableInformation(exif: emptyExif))
+        #expect(!FooterItemType.parameters.hasAvailableInformation(exif: emptyExif))
+        #expect(!FooterItemType.date.hasAvailableInformation(exif: emptyExif))
+        #expect(!FooterItemType.customText.hasAvailableInformation(exif: emptyExif, customText: "   "))
+        #expect(FooterItemType.customText.hasAvailableInformation(exif: emptyExif, customText: "Shot on iPhone"))
+        #expect(FooterItemType.spacer.hasAvailableInformation(exif: emptyExif))
+
+        // 部分 EXIF 存在時
+        let cameraExif = ExifMetadata(make: "Sony", model: "ILCE-7RM5")
+        #expect(FooterItemType.logo.hasAvailableInformation(exif: cameraExif))
+        #expect(FooterItemType.camera.hasAvailableInformation(exif: cameraExif))
+        #expect(!FooterItemType.lens.hasAvailableInformation(exif: cameraExif))
+        #expect(!FooterItemType.parameters.hasAvailableInformation(exif: cameraExif))
+
+        let paramExif = ExifMetadata(fNumber: 2.8)
+        #expect(FooterItemType.parameters.hasAvailableInformation(exif: paramExif))
+    }
+
+    @Test func testFooterSettingsTextColorDefaultAndCustom() {
+        let defaultSettings = FooterSettings()
+        // 預設改成灰色 (因為預設白底)，預設值為 #8E8E93 (iOS 系統灰)
+        #expect(defaultSettings.textColorHex == "#8E8E93")
+        
+        var customSettings = defaultSettings
+        customSettings.textColorHex = "#FF3B30"
+        #expect(customSettings.textColorHex == "#FF3B30")
+    }
+
+    @Test func testFooterAddItemGuardsMissingInfo() {
+        var settings = FooterSettings()
+        settings.activeItems = []
+        let emptyExif = ExifMetadata()
+        
+        // 無相機資訊時，應被保護禁止加入
+        settings.addItem(.camera, exif: emptyExif)
+        #expect(settings.activeItems.isEmpty)
+        
+        // spacer 無需 EXIF，隨時可加入
+        settings.addItem(.spacer, exif: emptyExif)
+        #expect(settings.activeItems == [.spacer])
+        
+        // 有相機資訊時，允許加入
+        let validExif = ExifMetadata(make: "Leica", model: "M11")
+        settings.addItem(.camera, exif: validExif)
+        #expect(settings.activeItems == [.spacer, .camera])
+    }
 }
 

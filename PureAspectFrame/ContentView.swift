@@ -14,6 +14,13 @@ public struct ContentView: View {
                 f.activeItems = [.logo, .camera, .spacer, .parameters, .spacer]
                 return f
             }())
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-FooterTab-EmptyExif") {
+            let img = DemoImageProvider.makeDemoImage()
+            EditorView(sourceImage: img, initialExif: ExifMetadata(), initialTab: .footer, initialFooterSettings: {
+                var f = FooterSettings()
+                f.activeItems = [.spacer]
+                return f
+            }())
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-FooterTab-NoSpacer") {
             let img = DemoImageProvider.makeDemoImage()
             EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .footer, initialFooterSettings: {

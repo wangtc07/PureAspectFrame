@@ -182,6 +182,7 @@ public struct CanvasStageView: View {
                                         footerSectionView(items: sections[2], fontSize: fontScaledSize)
                                     }
                                 }
+                                .foregroundStyle(Color(hex: footerSettings.textColorHex))
                                 .padding(.horizontal, 4)
                                 .frame(width: photoWidth, height: footerHeight)
                                 .position(x: padLeft + (photoWidth / 2.0), y: cH - padBottom - (footerHeight / 2.0))

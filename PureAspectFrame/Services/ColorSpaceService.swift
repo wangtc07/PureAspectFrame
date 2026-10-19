@@ -175,3 +175,19 @@ public final class ColorSpaceService: Sendable {
         return rgbToHex(r: rgb.r, g: rgb.g, b: rgb.b)
     }
 }
+
+#if canImport(SwiftUI)
+import SwiftUI
+
+extension Color {
+    /// 從 Hex 字串初始化 Color（若解析失敗則回退預設色）
+    public init(hex: String, defaultColor: Color = Color(white: 0.55)) {
+        if let rgb = ColorSpaceService.hexToRgb(hex) {
+            self.init(red: rgb.r, green: rgb.g, blue: rgb.b)
+        } else {
+            self = defaultColor
+        }
+    }
+}
+#endif
+

@@ -267,15 +267,19 @@ public final class ImageRendererService: Sendable {
         var currentFontSize = max(10.0, canvasWidth * CGFloat(settings.fontSizeScale))
         var font = UIFont.systemFont(ofSize: currentFontSize, weight: .medium)
         let textColor: UIColor
-        switch backgroundMode {
-        case .black:
-            textColor = .white
-        case .white:
-            textColor = .black
-        case let .customHSB(_, _, b):
-            textColor = b > 0.5 ? .black : .white
-        case .frostedGlass:
-            textColor = .white
+        if let rgb = ColorSpaceService.hexToRgb(settings.textColorHex) {
+            textColor = UIColor(red: rgb.r, green: rgb.g, blue: rgb.b, alpha: 1.0)
+        } else {
+            switch backgroundMode {
+            case .black:
+                textColor = .white
+            case .white:
+                textColor = UIColor(white: 0.55, alpha: 1.0)
+            case let .customHSB(_, _, b):
+                textColor = b > 0.5 ? UIColor(white: 0.35, alpha: 1.0) : .white
+            case .frostedGlass:
+                textColor = .white
+            }
         }
         
         var attributes: [NSAttributedString.Key: Any] = [

@@ -174,7 +174,8 @@ public struct EditorView: View {
                                 )
                             }
                         }
-                        .frame(height: 295)
+                        .frame(height: selectedTab == .footer ? 385 : 295)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedTab)
                     }
                     .background(Color(uiColor: .secondarySystemBackground))
                     .transition(.move(edge: .bottom).combined(with: .opacity))

@@ -69,6 +69,25 @@ public struct HSBColorPickerView: View {
                                     commitHexInput()
                                 }
                             }
+                            .toolbar {
+                                ToolbarItemGroup(placement: .keyboard) {
+                                    Spacer()
+                                    Button {
+                                        isHexFocused = false
+                                        commitHexInput()
+                                    } label: {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 15, weight: .bold))
+                                            .foregroundStyle(Color.accentColor)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(Color.accentColor.opacity(0.12), in: Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("完成 Hex 輸入")
+                                    .accessibilityIdentifier("keyboard_hex_checkmark_done")
+                                }
+                            }
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -385,11 +404,13 @@ public struct HSBColorPickerView: View {
     }
 }
 
-// MARK: - 漸層軌道自訂滑桿 (GradientSlider)
+// MARK: - 漸層軌道自訂滑桿 (GradientSlider: 纖細優雅設計＋震動反饋手感)
 public struct GradientSlider: View {
     @Binding var value: Double // 0.0 ... 1.0
     let gradientColors: [Color]
     var onValueChanged: ((Double) -> Void)? = nil
+    
+    @State private var lastHapticStep: Int = -1
     
     public init(value: Binding<Double>, gradientColors: [Color], onValueChanged: ((Double) -> Void)? = nil) {
         self._value = value
@@ -400,12 +421,12 @@ public struct GradientSlider: View {
     public var body: some View {
         GeometryReader { geo in
             let totalWidth = geo.size.width
-            let thumbDiameter: CGFloat = 26
+            let thumbDiameter: CGFloat = 20
             let usableWidth = max(totalWidth - thumbDiameter, 1)
             let currentOffset = CGFloat(min(max(value, 0.0), 1.0)) * usableWidth
             
             ZStack(alignment: .leading) {
-                // 漸層軌道
+                // 纖細漸層軌道 (7pt 高度，洗鍊高級感)
                 Capsule()
                     .fill(
                         LinearGradient(
@@ -414,18 +435,18 @@ public struct GradientSlider: View {
                             endPoint: .trailing
                         )
                     )
-                    .frame(height: 18)
+                    .frame(height: 7)
                     .overlay(
                         Capsule()
-                            .strokeBorder(Color.white.opacity(0.35), lineWidth: 1)
+                            .strokeBorder(Color.white.opacity(0.4), lineWidth: 0.8)
                     )
                     .padding(.horizontal, thumbDiameter / 2)
                 
-                // 滑塊 (Thumb)
+                // 靈巧滑塊 (Thumb 20pt)
                 Circle()
                     .fill(Color.white)
                     .frame(width: thumbDiameter, height: thumbDiameter)
-                    .shadow(color: Color.black.opacity(0.25), radius: 3, x: 0, y: 1.5)
+                    .shadow(color: Color.black.opacity(0.2), radius: 2.5, x: 0, y: 1)
                     .overlay(
                         Circle()
                             .strokeBorder(Color.black.opacity(0.12), lineWidth: 1)
@@ -441,14 +462,26 @@ public struct GradientSlider: View {
                         let newValue = Double(clampedX / usableWidth)
                         value = newValue
                         onValueChanged?(newValue)
+                        
+                        // 滑動震動手感 (Haptic feedback)
+                        let currentStep = Int(newValue * 100)
+                        if currentStep != lastHapticStep {
+                            lastHapticStep = currentStep
+                            #if canImport(UIKit)
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            #endif
+                        }
+                    }
+                    .onEnded { _ in
+                        lastHapticStep = -1
                     }
             )
         }
-        .frame(height: 32)
+        .frame(height: 26)
     }
 }
 
-// MARK: - 滑桿直接數值輸入組件 (SliderDirectValueInput)
+// MARK: - 滑桿直接數值輸入組件 (SliderDirectValueInput: 支援鍵盤確認勾勾)
 public struct SliderDirectValueInput: View {
     @Binding var value: Double // 0.0 ... 1.0
     let range: ClosedRange<Double> // 例如 0...360 或 0...100 或 0...255
@@ -487,6 +520,25 @@ public struct SliderDirectValueInput: View {
                 }
                 .onSubmit {
                     commitText()
+                }
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button {
+                            isFocused = false
+                            commitText()
+                        } label: {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(Color.accentColor)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.accentColor.opacity(0.12), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("完成輸入")
+                        .accessibilityIdentifier("keyboard_slider_checkmark_done")
+                    }
                 }
             
             if !suffix.isEmpty {
