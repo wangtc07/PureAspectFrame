@@ -24,6 +24,7 @@ public struct SplitTabView: View {
                         Spacer()
                         Toggle("", isOn: $splitSettings.isEnabled)
                             .labelsHidden()
+                            .tint(Color.accentColor)
                     }
                 }
                 .padding()

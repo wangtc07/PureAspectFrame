@@ -10,6 +10,7 @@ public struct CanvasStageView: View {
     @Binding var borderSettings: BorderSettings
     var backgroundMode: BackgroundMode
     var footerSettings: FooterSettings
+    var splitSettings: SplitSettings
     var exifMetadata: ExifMetadata
     
     // 是否正在檢視四邊距離標線
@@ -33,6 +34,43 @@ public struct CanvasStageView: View {
     public static let photoOverflowStrokeStyle = StrokeStyle(lineWidth: 1.0, dash: [5, 4])
     public static let photoOverflowColor = Color(hex: "#8E8E93").opacity(0.65)
     
+    // MARK: - 切割指示線樣式常數（不能太粗，剛好 1.0pt 細線；雙層複合結構，在暗調或亮調照片上均清晰可見）
+    public static let splitCutLineWidth: CGFloat = 1.0
+    public static let splitCutLineBaseWidth: CGFloat = 2.0
+    public static let splitCutLineWhiteColor: Color = Color.white.opacity(0.95)
+    public static let splitCutLineDarkColor: Color = Color.black.opacity(0.65)
+    
+    /// 計算無縫切割 (gapPx == 0) 時各切割線在總寬度上的 X 座標
+    public static func calculateCutLinePositions(totalWidth: CGFloat, splitSettings: SplitSettings) -> [CGFloat] {
+        guard splitSettings.isEnabled, splitSettings.splitCount > 1 else { return [] }
+        let count = splitSettings.splitCount
+        let sliceWidth = totalWidth / CGFloat(count)
+        var positions: [CGFloat] = []
+        for i in 1..<count {
+            positions.append(CGFloat(i) * sliceWidth)
+        }
+        return positions
+    }
+    
+    /// 計算切割切片幾何範圍 (支援 gapPx >= 0)
+    public static func calculateSplitPreviewSlices(totalWidth: CGFloat, splitSettings: SplitSettings) -> [CGRect] {
+        guard splitSettings.isEnabled, splitSettings.splitCount > 1 else {
+            return [CGRect(x: 0, y: 0, width: totalWidth, height: 0)]
+        }
+        let count = CGFloat(splitSettings.splitCount)
+        let totalGaps = (count - 1) * splitSettings.gapPx
+        let availableWidth = max(0, totalWidth - totalGaps)
+        let sliceWidth = availableWidth / count
+        
+        var slices: [CGRect] = []
+        var currentX: CGFloat = 0
+        for _ in 0..<splitSettings.splitCount {
+            slices.append(CGRect(x: currentX, y: 0, width: sliceWidth, height: 0))
+            currentX += sliceWidth + splitSettings.gapPx
+        }
+        return slices
+    }
+    
     public init(
         image: CGImage,
         canvasRatio: CanvasRatio,
@@ -42,6 +80,7 @@ public struct CanvasStageView: View {
         borderSettings: Binding<BorderSettings>,
         backgroundMode: BackgroundMode,
         footerSettings: FooterSettings,
+        splitSettings: SplitSettings = SplitSettings(),
         exifMetadata: ExifMetadata,
         showDistanceMarkers: Binding<Bool>,
         isBottomPanelCollapsed: Binding<Bool>,
@@ -57,6 +96,7 @@ public struct CanvasStageView: View {
         self._borderSettings = borderSettings
         self.backgroundMode = backgroundMode
         self.footerSettings = footerSettings
+        self.splitSettings = splitSettings
         self.exifMetadata = exifMetadata
         self._showDistanceMarkers = showDistanceMarkers
         self._isBottomPanelCollapsed = isBottomPanelCollapsed
@@ -248,6 +288,12 @@ public struct CanvasStageView: View {
                     }
                 }
                 .frame(width: fitSize.width, height: fitSize.height)
+                .overlay {
+                    if splitSettings.isEnabled && splitSettings.splitCount > 1 {
+                        splitPreviewOverlay(cW: fitSize.width, cH: fitSize.height)
+                            .allowsHitTesting(false)
+                    }
+                }
                 .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 6)
                 .onTapGesture(count: 2) {
                     resetImageTransform()
@@ -260,6 +306,110 @@ public struct CanvasStageView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+    
+    // MARK: - 切割即時預覽遮罩與切割線 (支援無縫 0px 高對比細線與間隙物理分隔)
+    @ViewBuilder
+    private func splitPreviewOverlay(cW: CGFloat, cH: CGFloat) -> some View {
+        let count = splitSettings.splitCount
+        if splitSettings.gapPx <= 0 {
+            // 無間隙無縫切割 (IG 輪播模式)
+            let cutPositions = Self.calculateCutLinePositions(totalWidth: cW, splitSettings: splitSettings)
+            let sliceW = cW / CGFloat(count)
+            
+            ZStack {
+                // 1. 各切片序號膠囊標籤 (懸浮於切片頂部)
+                ForEach(0..<count, id: \.self) { index in
+                    let centerX = (CGFloat(index) + 0.5) * sliceW
+                    sliceBadge(index: index, total: count)
+                        .position(x: centerX, y: 18)
+                }
+                
+                // 2. 切割指示線 (不能太粗，剛好 1.0pt 細線；雙層複合結構，暗調亮調均清晰呈現)
+                ForEach(cutPositions, id: \.self) { xPos in
+                    ZStack {
+                        // 暗調底基 (2.0pt，確保在純白或亮色照片上維持暗邊輪廓)
+                        Rectangle()
+                            .fill(Self.splitCutLineDarkColor)
+                            .frame(width: Self.splitCutLineBaseWidth, height: cH)
+                        
+                        // 亮白主線 (1.0pt，確保在純黑或暗色照片上維持高亮鋒利)
+                        Rectangle()
+                            .fill(Self.splitCutLineWhiteColor)
+                            .frame(width: Self.splitCutLineWidth, height: cH)
+                    }
+                    .shadow(color: Color.black.opacity(0.4), radius: 1, x: 0, y: 0)
+                    .position(x: xPos, y: cH / 2.0)
+                }
+            }
+        } else {
+            // 有間隙切割 (Threads / X 等模式)
+            let slices = Self.calculateSplitPreviewSlices(totalWidth: cW, splitSettings: splitSettings)
+            
+            ZStack {
+                // 1. 各切片序號膠囊標籤
+                ForEach(0..<slices.count, id: \.self) { index in
+                    let centerX = slices[index].midX
+                    sliceBadge(index: index, total: count)
+                        .position(x: centerX, y: 18)
+                }
+                
+                // 2. 間隙挖空遮罩 (顯示舞台背景色，呈現物理切割切開感) 與邊界切割線
+                ForEach(0..<(slices.count - 1), id: \.self) { i in
+                    let gapLeft = slices[i].maxX
+                    let gapRight = slices[i + 1].minX
+                    let gapWidth = max(0, gapRight - gapLeft)
+                    let gapCenterX = gapLeft + (gapWidth / 2.0)
+                    
+                    // 間隙挖空區域 (填入舞台背景色)
+                    Rectangle()
+                        .fill(backgroundMode.stageBackgroundColor)
+                        .frame(width: gapWidth, height: cH)
+                        .position(x: gapCenterX, y: cH / 2.0)
+                    
+                    // 左側切片裁切線
+                    ZStack {
+                        Rectangle()
+                            .fill(Self.splitCutLineDarkColor)
+                            .frame(width: Self.splitCutLineBaseWidth, height: cH)
+                        Rectangle()
+                            .fill(Self.splitCutLineWhiteColor)
+                            .frame(width: Self.splitCutLineWidth, height: cH)
+                    }
+                    .shadow(color: Color.black.opacity(0.4), radius: 1, x: 0, y: 0)
+                    .position(x: gapLeft, y: cH / 2.0)
+                    
+                    // 右側切片裁切線
+                    ZStack {
+                        Rectangle()
+                            .fill(Self.splitCutLineDarkColor)
+                            .frame(width: Self.splitCutLineBaseWidth, height: cH)
+                        Rectangle()
+                            .fill(Self.splitCutLineWhiteColor)
+                            .frame(width: Self.splitCutLineWidth, height: cH)
+                    }
+                    .shadow(color: Color.black.opacity(0.4), radius: 1, x: 0, y: 0)
+                    .position(x: gapRight, y: cH / 2.0)
+                }
+            }
+        }
+    }
+    
+    private func sliceBadge(index: Int, total: Int) -> some View {
+        HStack(spacing: 2) {
+            Text("\(index + 1)")
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+            Text("/")
+                .font(.system(size: 8, weight: .semibold, design: .rounded))
+                .opacity(0.6)
+            Text("\(total)")
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3.5)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().stroke(Color.white.opacity(0.35), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
     }
     
     // MARK: - 重設圖片位置與縮放為預設值

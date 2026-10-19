@@ -7,6 +7,51 @@ public struct ContentView: View {
     public var body: some View {
         if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Settings") {
             SettingsView()
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Split-ZeroGap-Dark") {
+            let img = DemoImageProvider.makeDarkDemoImage()
+            EditorView(
+                sourceImage: img,
+                initialExif: DemoImageProvider.demoExif,
+                initialTab: .split,
+                initialSplitSettings: {
+                    var s = SplitSettings()
+                    s.isEnabled = true
+                    s.splitCount = 3
+                    s.gapPx = 0
+                    s.preset = .igCarousel
+                    return s
+                }()
+            )
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Split-ZeroGap-Bright") {
+            let img = DemoImageProvider.makeBrightDemoImage()
+            EditorView(
+                sourceImage: img,
+                initialExif: DemoImageProvider.demoExif,
+                initialTab: .split,
+                initialSplitSettings: {
+                    var s = SplitSettings()
+                    s.isEnabled = true
+                    s.splitCount = 3
+                    s.gapPx = 0
+                    s.preset = .igCarousel
+                    return s
+                }()
+            )
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Split-WithGap") {
+            let img = DemoImageProvider.makeDemoImage()
+            EditorView(
+                sourceImage: img,
+                initialExif: DemoImageProvider.demoExif,
+                initialTab: .split,
+                initialSplitSettings: {
+                    var s = SplitSettings()
+                    s.isEnabled = true
+                    s.splitCount = 3
+                    s.gapPx = 8
+                    s.preset = .xTwitter
+                    return s
+                }()
+            )
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-FooterTab-TwoSpacers") {
             let img = DemoImageProvider.makeDemoImage()
             EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialTab: .footer, initialFooterSettings: {

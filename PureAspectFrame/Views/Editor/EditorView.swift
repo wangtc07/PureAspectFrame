@@ -58,6 +58,7 @@ public struct EditorView: View {
         initialExif: ExifMetadata = ExifMetadata(),
         initialTab: EditorTab = .ratio,
         initialShowDistanceMarkers: Bool = false,
+        initialSplitSettings: SplitSettings = SplitSettings(),
         initialOffset: CGSize = .zero,
         initialScale: CGFloat = 1.0,
         initialIsAdjustingImage: Bool = false,
@@ -70,6 +71,7 @@ public struct EditorView: View {
         self._exifMetadata = State(initialValue: initialExif)
         self._selectedTab = State(initialValue: initialTab)
         self._showDistanceMarkers = State(initialValue: initialShowDistanceMarkers)
+        self._splitSettings = State(initialValue: initialSplitSettings)
         self.initialOffset = initialOffset
         self.initialScale = initialScale
         self.initialIsAdjustingImage = initialIsAdjustingImage
@@ -85,6 +87,7 @@ public struct EditorView: View {
         initialShowDistanceMarkers: Bool = false,
         initialBorderSettings: BorderSettings = BorderSettings(),
         initialFooterSettings: FooterSettings = FooterSettings(),
+        initialSplitSettings: SplitSettings = SplitSettings(),
         initialOffset: CGSize = .zero,
         initialScale: CGFloat = 1.0,
         initialIsAdjustingImage: Bool = false,
@@ -99,6 +102,7 @@ public struct EditorView: View {
         self._showDistanceMarkers = State(initialValue: initialShowDistanceMarkers)
         self._borderSettings = State(initialValue: initialBorderSettings)
         self._footerSettings = State(initialValue: initialFooterSettings)
+        self._splitSettings = State(initialValue: initialSplitSettings)
         self.initialOffset = initialOffset
         self.initialScale = initialScale
         self.initialIsAdjustingImage = initialIsAdjustingImage
@@ -120,6 +124,7 @@ public struct EditorView: View {
                     borderSettings: $borderSettings,
                     backgroundMode: backgroundMode,
                     footerSettings: footerSettings,
+                    splitSettings: splitSettings,
                     exifMetadata: exifMetadata,
                     showDistanceMarkers: $showDistanceMarkers,
                     isBottomPanelCollapsed: $isBottomPanelCollapsed,

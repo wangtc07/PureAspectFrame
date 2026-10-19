@@ -388,5 +388,56 @@ struct UIWorkflowTests {
         #expect(!InternalCropRatio.allCases.map(\.rawValue).contains("自由"))
         #expect(InternalCropRatio.allCases.count == 4)
     }
+
+    @Test func testCanvasStageSplitPreviewAndCutLine() {
+        // 1. 驗證切割指示線樣式常數（不能太粗，剛好 1.0pt 細線；暗調底基 2.0pt，確保暗調與亮調照片均能清晰可見）
+        #expect(CanvasStageView.splitCutLineWidth == 1.0)
+        #expect(CanvasStageView.splitCutLineBaseWidth == 2.0)
+        #expect(CanvasStageView.splitCutLineWhiteColor == Color.white.opacity(0.95))
+        #expect(CanvasStageView.splitCutLineDarkColor == Color.black.opacity(0.65))
+
+        // 2. 驗證切割預覽幾何計算（無縫 0px 切割）
+        var split = SplitSettings()
+        split.isEnabled = true
+        split.splitCount = 3
+        split.gapPx = 0
+
+        let cutPositions = CanvasStageView.calculateCutLinePositions(totalWidth: 300, splitSettings: split)
+        #expect(cutPositions.count == 2)
+        #expect(abs(cutPositions[0] - 100.0) < 0.01)
+        #expect(abs(cutPositions[1] - 200.0) < 0.01)
+
+        // 3. 驗證切割預覽幾何計算（有間隔切割，例如 Threads/Twitter 平台預設）
+        split.gapPx = 10
+        let slicesWithGap = CanvasStageView.calculateSplitPreviewSlices(totalWidth: 320, splitSettings: split)
+        #expect(slicesWithGap.count == 3)
+        // 總寬度 320，2 個間隙各 10，剩餘 300 / 3 = 100
+        #expect(abs(slicesWithGap[0].width - 100.0) < 0.01)
+        #expect(abs(slicesWithGap[1].width - 100.0) < 0.01)
+        #expect(abs(slicesWithGap[2].width - 100.0) < 0.01)
+        #expect(abs(slicesWithGap[0].minX - 0.0) < 0.01)
+        #expect(abs(slicesWithGap[1].minX - 110.0) < 0.01)
+        #expect(abs(slicesWithGap[2].minX - 220.0) < 0.01)
+
+        // 4. 驗證 CanvasStageView 支援接收 splitSettings
+        let dummyImage = makeTestImage()
+        var border = BorderSettings()
+        var showDistance = false
+        var isCollapsed = false
+
+        let stage = CanvasStageView(
+            image: dummyImage,
+            canvasRatio: .ig4x5,
+            isZeroCrop: false,
+            borderSettings: Binding(get: { border }, set: { border = $0 }),
+            backgroundMode: .white,
+            footerSettings: FooterSettings(),
+            splitSettings: split,
+            exifMetadata: ExifMetadata(),
+            showDistanceMarkers: Binding(get: { showDistance }, set: { showDistance = $0 }),
+            isBottomPanelCollapsed: Binding(get: { isCollapsed }, set: { isCollapsed = $0 })
+        )
+        _ = stage
+    }
 }
 
