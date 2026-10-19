@@ -329,7 +329,7 @@ struct UIWorkflowTests {
         let stage = CanvasStageView(
             image: testImage,
             canvasRatio: .ig4x5,
-            internalRatio: .free,
+            internalRatio: .square1x1,
             isZeroCrop: false,
             borderSettings: Binding(get: { border }, set: { border = $0 }),
             backgroundMode: .white,
@@ -359,6 +359,34 @@ struct UIWorkflowTests {
 
         let overflowColor = CanvasStageView.photoOverflowColor
         #expect(overflowColor == Color(hex: "#8E8E93").opacity(0.65))
+    }
+
+    @Test func testRatioTabViewOrientationToggle() {
+        var canvasRatio: CanvasRatio = .ig4x5
+        var isLandscape = false
+        var internalRatio: InternalCropRatio = .square1x1
+        var isZeroCrop = false
+
+        let view = RatioTabView(
+            canvasRatio: Binding(get: { canvasRatio }, set: { canvasRatio = $0 }),
+            isLandscape: Binding(get: { isLandscape }, set: { isLandscape = $0 }),
+            internalRatio: Binding(get: { internalRatio }, set: { internalRatio = $0 }),
+            isZeroCrop: Binding(get: { isZeroCrop }, set: { isZeroCrop = $0 })
+        )
+        _ = view
+
+        // 驗證初始為直式
+        #expect(canvasRatio.displayName(isLandscape: isLandscape) == "4:5 (IG)")
+        #expect(isLandscape == false)
+
+        // 切換為橫式
+        isLandscape = true
+        #expect(canvasRatio.displayName(isLandscape: isLandscape) == "5:4 (IG)")
+        #expect(isLandscape == true)
+        
+        // 驗證內部比例選項均無「自由」
+        #expect(!InternalCropRatio.allCases.map(\.rawValue).contains("自由"))
+        #expect(InternalCropRatio.allCases.count == 4)
     }
 }
 

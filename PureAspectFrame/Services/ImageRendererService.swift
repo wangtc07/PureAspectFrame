@@ -14,8 +14,9 @@ public final class ImageRendererService: Sendable {
     public static func render(
         image: CGImage,
         canvasRatio: CanvasRatio,
-        internalRatio: InternalCropRatio = .free,
+        internalRatio: InternalCropRatio = .square1x1,
         isZeroCrop: Bool = false,
+        isLandscape: Bool = false,
         borderSettings: BorderSettings,
         backgroundMode: BackgroundMode,
         footerSettings: FooterSettings,
@@ -24,7 +25,8 @@ public final class ImageRendererService: Sendable {
         imageOffset: CGPoint = .zero,
         imageScale: CGFloat = 1.0
     ) -> CGImage? {
-        let canvasSize = canvasRatio.targetPixelSize(baseWidth: baseWidth)
+        let photoAspect = CGFloat(image.width) / max(1, CGFloat(image.height))
+        let canvasSize = canvasRatio.targetPixelSize(baseWidth: baseWidth, isLandscape: isLandscape, photoAspectRatio: photoAspect)
         let canvasWidth = Int(canvasSize.width)
         let canvasHeight = Int(canvasSize.height)
         
@@ -393,8 +395,9 @@ public final class ImageRendererService: Sendable {
     public static func renderSlices(
         image: CGImage,
         canvasRatio: CanvasRatio,
-        internalRatio: InternalCropRatio = .free,
+        internalRatio: InternalCropRatio = .square1x1,
         isZeroCrop: Bool = false,
+        isLandscape: Bool = false,
         borderSettings: BorderSettings,
         backgroundMode: BackgroundMode,
         footerSettings: FooterSettings,
@@ -407,6 +410,7 @@ public final class ImageRendererService: Sendable {
             canvasRatio: canvasRatio,
             internalRatio: internalRatio,
             isZeroCrop: isZeroCrop,
+            isLandscape: isLandscape,
             borderSettings: borderSettings,
             backgroundMode: backgroundMode,
             footerSettings: footerSettings,

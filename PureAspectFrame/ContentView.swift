@@ -64,6 +64,9 @@ public struct ContentView: View {
                 initialScale: 1.35,
                 initialIsAdjustingImage: true
             )
+        } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-RatioTab-Landscape") {
+            let img = DemoImageProvider.makeDemoImage()
+            EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif, initialIsLandscape: true)
         } else if ProcessInfo.processInfo.arguments.contains("-UITestScreen-Editor") {
             let img = DemoImageProvider.makeDemoImage()
             EditorView(sourceImage: img, initialExif: DemoImageProvider.demoExif)

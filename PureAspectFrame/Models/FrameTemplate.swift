@@ -26,7 +26,7 @@ public final class FrameTemplate {
         id: UUID = UUID(),
         name: String,
         canvasRatio: CanvasRatio = .ig4x5,
-        internalRatio: InternalCropRatio = .free,
+        internalRatio: InternalCropRatio = .square1x1,
         isZeroCrop: Bool = false,
         borderSettings: BorderSettings = BorderSettings(),
         backgroundMode: BackgroundMode = .white,
@@ -56,7 +56,7 @@ public final class FrameTemplate {
     }
     
     public var internalRatio: InternalCropRatio {
-        InternalCropRatio(rawValue: internalRatioRaw) ?? .free
+        InternalCropRatio(rawValue: internalRatioRaw) ?? .square1x1
     }
     
     public var borderSettings: BorderSettings {

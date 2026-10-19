@@ -25,6 +25,48 @@ struct ModelTests {
         #expect(bounds.height == 1350)
     }
 
+    @Test func testCanvasRatioOriginalAndOrientation() {
+        let eps: CGFloat = 0.0001
+        
+        // 1. 最前面必須是原圖比例
+        #expect(CanvasRatio.allCases.first == .original)
+        #expect(CanvasRatio.original.rawValue == "原圖比例")
+        #expect(CanvasRatio.original.displayName(isLandscape: false) == "原圖比例")
+        #expect(CanvasRatio.original.displayName(isLandscape: true) == "原圖比例")
+        
+        // 原圖比例：依傳入相片寬高比與橫直式計算
+        // 直式模式下長邊垂直 (高大於寬, aspect <= 1)
+        let portraitAspect = CanvasRatio.original.aspectRatio(isLandscape: false, photoAspectRatio: 3.0 / 2.0)
+        #expect(abs(portraitAspect - (2.0 / 3.0)) < eps)
+        
+        // 橫式模式下長邊水平 (寬大於高, aspect >= 1)
+        let landscapeAspect = CanvasRatio.original.aspectRatio(isLandscape: true, photoAspectRatio: 2.0 / 3.0)
+        #expect(abs(landscapeAspect - (3.0 / 2.0)) < eps)
+        
+        // 2. 外部比例在橫式與直式下的名稱與寬高比
+        #expect(CanvasRatio.ig4x5.displayName(isLandscape: false) == "4:5 (IG)")
+        #expect(CanvasRatio.ig4x5.displayName(isLandscape: true) == "5:4 (IG)")
+        #expect(abs(CanvasRatio.ig4x5.aspectRatio(isLandscape: false) - (4.0 / 5.0)) < eps)
+        #expect(abs(CanvasRatio.ig4x5.aspectRatio(isLandscape: true) - (5.0 / 4.0)) < eps)
+        
+        #expect(CanvasRatio.xhs3x4.displayName(isLandscape: false) == "3:4 (小紅書)")
+        #expect(CanvasRatio.xhs3x4.displayName(isLandscape: true) == "4:3 (小紅書)")
+        #expect(abs(CanvasRatio.xhs3x4.aspectRatio(isLandscape: true) - (4.0 / 3.0)) < eps)
+        
+        #expect(CanvasRatio.story9x16.displayName(isLandscape: true) == "16:9 (Story)")
+        #expect(abs(CanvasRatio.story9x16.aspectRatio(isLandscape: true) - (16.0 / 9.0)) < eps)
+    }
+
+    @Test func testInternalCropRatioWithoutFree() {
+        // 驗證內部比例選項已移除「自由」
+        let allTitles = InternalCropRatio.allCases.map(\.rawValue)
+        #expect(!allTitles.contains("自由"))
+        #expect(allTitles == ["1:1", "4:5", "3:2", "16:9"])
+        
+        // 驗證舊資料庫或模板之 "自由" 向下相容
+        #expect(InternalCropRatio(rawValue: "自由") == .square1x1)
+    }
+
     // MARK: - BorderSettings Tests
     @Test func testBorderLinkedEdgesPersistence() {
         var border = BorderSettings()

@@ -4,6 +4,7 @@ import SwiftUI
 public struct CanvasStageView: View {
     var image: CGImage
     var canvasRatio: CanvasRatio
+    var isLandscape: Bool
     var internalRatio: InternalCropRatio
     var isZeroCrop: Bool
     @Binding var borderSettings: BorderSettings
@@ -35,7 +36,8 @@ public struct CanvasStageView: View {
     public init(
         image: CGImage,
         canvasRatio: CanvasRatio,
-        internalRatio: InternalCropRatio,
+        isLandscape: Bool = false,
+        internalRatio: InternalCropRatio = .square1x1,
         isZeroCrop: Bool,
         borderSettings: Binding<BorderSettings>,
         backgroundMode: BackgroundMode,
@@ -49,6 +51,7 @@ public struct CanvasStageView: View {
     ) {
         self.image = image
         self.canvasRatio = canvasRatio
+        self.isLandscape = isLandscape
         self.internalRatio = internalRatio
         self.isZeroCrop = isZeroCrop
         self._borderSettings = borderSettings
@@ -68,7 +71,8 @@ public struct CanvasStageView: View {
         GeometryReader { proxy in
             let availableWidth = proxy.size.width - 24
             let availableHeight = proxy.size.height - 24
-            let canvasAspect = canvasRatio.aspectRatio
+            let photoAspect = CGFloat(image.width) / max(1, CGFloat(image.height))
+            let canvasAspect = canvasRatio.aspectRatio(isLandscape: isLandscape, photoAspectRatio: photoAspect)
             
             // 計算在可用空間內 Aspect-Fit 的畫布物理尺寸
             let fitSize: CGSize = {

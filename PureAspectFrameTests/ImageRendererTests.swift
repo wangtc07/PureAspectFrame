@@ -37,7 +37,7 @@ struct ImageRendererTests {
         let rendered = ImageRendererService.render(
             image: testImage,
             canvasRatio: ratio,
-            internalRatio: .free,
+            internalRatio: .square1x1,
             isZeroCrop: false,
             borderSettings: border,
             backgroundMode: background,
@@ -61,7 +61,7 @@ struct ImageRendererTests {
         let slices = ImageRendererService.renderSlices(
             image: testImage,
             canvasRatio: .landscape16x9,
-            internalRatio: .free,
+            internalRatio: .square1x1,
             isZeroCrop: false,
             borderSettings: BorderSettings(),
             backgroundMode: .black,

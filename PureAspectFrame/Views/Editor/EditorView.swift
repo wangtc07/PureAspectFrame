@@ -7,8 +7,9 @@ public struct EditorView: View {
     var initialExif: ExifMetadata
     
     // 當前編輯狀態
-    @State private var canvasRatio: CanvasRatio = .ig4x5
-    @State private var internalRatio: InternalCropRatio = .free
+    @State private var canvasRatio: CanvasRatio
+    @State private var isLandscape: Bool
+    @State private var internalRatio: InternalCropRatio
     @State private var isZeroCrop: Bool = false
     @State private var borderSettings: BorderSettings = BorderSettings()
     @State private var backgroundMode: BackgroundMode = .white
@@ -59,7 +60,10 @@ public struct EditorView: View {
         initialShowDistanceMarkers: Bool = false,
         initialOffset: CGSize = .zero,
         initialScale: CGFloat = 1.0,
-        initialIsAdjustingImage: Bool = false
+        initialIsAdjustingImage: Bool = false,
+        initialCanvasRatio: CanvasRatio = .ig4x5,
+        initialIsLandscape: Bool = false,
+        initialInternalRatio: InternalCropRatio = .square1x1
     ) {
         self._sourceImage = sourceImage
         self.initialExif = initialExif
@@ -69,6 +73,9 @@ public struct EditorView: View {
         self.initialOffset = initialOffset
         self.initialScale = initialScale
         self.initialIsAdjustingImage = initialIsAdjustingImage
+        self._canvasRatio = State(initialValue: initialCanvasRatio)
+        self._isLandscape = State(initialValue: initialIsLandscape)
+        self._internalRatio = State(initialValue: initialInternalRatio)
     }
     
     public init(
@@ -80,7 +87,10 @@ public struct EditorView: View {
         initialFooterSettings: FooterSettings = FooterSettings(),
         initialOffset: CGSize = .zero,
         initialScale: CGFloat = 1.0,
-        initialIsAdjustingImage: Bool = false
+        initialIsAdjustingImage: Bool = false,
+        initialCanvasRatio: CanvasRatio = .ig4x5,
+        initialIsLandscape: Bool = false,
+        initialInternalRatio: InternalCropRatio = .square1x1
     ) {
         self._sourceImage = .constant(sourceImage)
         self.initialExif = initialExif
@@ -92,6 +102,9 @@ public struct EditorView: View {
         self.initialOffset = initialOffset
         self.initialScale = initialScale
         self.initialIsAdjustingImage = initialIsAdjustingImage
+        self._canvasRatio = State(initialValue: initialCanvasRatio)
+        self._isLandscape = State(initialValue: initialIsLandscape)
+        self._internalRatio = State(initialValue: initialInternalRatio)
     }
     
     public var body: some View {
@@ -101,6 +114,7 @@ public struct EditorView: View {
                 CanvasStageView(
                     image: sourceImage,
                     canvasRatio: canvasRatio,
+                    isLandscape: isLandscape,
                     internalRatio: internalRatio,
                     isZeroCrop: isZeroCrop,
                     borderSettings: $borderSettings,
@@ -180,6 +194,7 @@ public struct EditorView: View {
                             case .ratio:
                                 RatioTabView(
                                     canvasRatio: $canvasRatio,
+                                    isLandscape: $isLandscape,
                                     internalRatio: $internalRatio,
                                     isZeroCrop: $isZeroCrop
                                 )
@@ -250,6 +265,7 @@ public struct EditorView: View {
                     canvasRatio: canvasRatio,
                     internalRatio: internalRatio,
                     isZeroCrop: isZeroCrop,
+                    isLandscape: isLandscape,
                     borderSettings: borderSettings,
                     backgroundMode: backgroundMode,
                     footerSettings: footerSettings,
@@ -260,6 +276,7 @@ public struct EditorView: View {
                     canvasRatio: canvasRatio,
                     internalRatio: internalRatio,
                     isZeroCrop: isZeroCrop,
+                    isLandscape: isLandscape,
                     borderSettings: borderSettings,
                     backgroundMode: backgroundMode,
                     footerSettings: footerSettings,
@@ -350,6 +367,7 @@ public struct EditorView: View {
                 canvasRatio: canvasRatio,
                 internalRatio: internalRatio,
                 isZeroCrop: isZeroCrop,
+                isLandscape: isLandscape,
                 borderSettings: borderSettings,
                 backgroundMode: backgroundMode,
                 footerSettings: footerSettings,
@@ -371,6 +389,7 @@ public struct EditorView: View {
                 canvasRatio: canvasRatio,
                 internalRatio: internalRatio,
                 isZeroCrop: isZeroCrop,
+                isLandscape: isLandscape,
                 borderSettings: borderSettings,
                 backgroundMode: backgroundMode,
                 footerSettings: footerSettings,

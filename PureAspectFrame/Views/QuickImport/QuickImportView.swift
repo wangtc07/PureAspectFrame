@@ -78,7 +78,7 @@ public struct QuickImportView: View {
                 if let rendered = ImageRendererService.render(
                     image: sourceImage,
                     canvasRatio: activeRatio,
-                    internalRatio: .free,
+                    internalRatio: .square1x1,
                     isZeroCrop: false,
                     borderSettings: activeBorder,
                     backgroundMode: activeBackground,
@@ -185,7 +185,7 @@ public struct QuickImportView: View {
         if let rendered = ImageRendererService.render(
             image: sourceImage,
             canvasRatio: ratio,
-            internalRatio: .free,
+            internalRatio: .square1x1,
             isZeroCrop: false,
             borderSettings: border,
             backgroundMode: background,
