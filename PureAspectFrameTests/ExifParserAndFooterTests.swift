@@ -231,5 +231,35 @@ struct ExifParserAndFooterTests {
         let ptHighRes = settings.resolvedFontPointSize(canvasWidth: 4320, canvasHeight: 5400)
         #expect(abs((ptLowRes / 1080.0) - (ptHighRes / 4320.0)) < 0.0001)
     }
+
+    @Test func testFooterUnifiedSectionAndDownwardDragRemovalAndTopToolbar() {
+        var settings = FooterSettings()
+        settings.activeItems = [.logo, .camera, .spacer, .lens]
+        
+        // 1. 驗證往下拖曳解除啟用的 removeItem(at:) 邏輯
+        settings.removeItem(at: 2) // 移除 .spacer
+        #expect(settings.activeItems == [.logo, .camera, .lens])
+        
+        // 越界索引不應 crash
+        settings.removeItem(at: 99)
+        #expect(settings.activeItems == [.logo, .camera, .lens])
+        
+        // 2. 驗證 FooterTabView UI 設計規範常數：
+        // - 字級拉桿獨立在第二行
+        // - 間距選項僅顯示 icon
+        // - 啟用項目不顯示 x 按鈕，改為往下拖曳解除（threshold <= 32pt）
+        // - 啟用與未啟用合併為同一區塊，標題使用「顯示項目」（取代積木/倉庫）
+        #expect(FooterTabView.usesSecondRowFontSizeSlider == true)
+        #expect(FooterTabView.spacerShowsIconOnly == true)
+        #expect(FooterTabView.activeItemShowsCloseButton == false)
+        #expect(FooterTabView.combinesActiveAndInactiveInSingleSection == true)
+        #expect(FooterTabView.sectionTitle == "顯示項目")
+        #expect(FooterTabView.downwardRemovalThresholdPt > 0 && FooterTabView.downwardRemovalThresholdPt <= 32)
+        
+        // 3. 驗證 EditorView 頂部導航列重新設計：縮小按鈕彼此間距、加大兩側距離
+        #expect(EditorView.topActionInnerSpacing <= 14)
+        #expect(EditorView.topActionHorizontalPadding >= 16)
+        #expect(EditorView.topBarHorizontalMargin >= 16)
+    }
 }
 

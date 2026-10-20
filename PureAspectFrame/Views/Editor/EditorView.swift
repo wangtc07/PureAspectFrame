@@ -3,6 +3,11 @@ import SwiftData
 
 /// 編輯器核心視圖（上下獨立分割佈局、Liquid Glass 導航與控制面板）
 public struct EditorView: View {
+    /// 頂部操作列按鈕間距與兩側邊距設計常數
+    public static let topActionInnerSpacing: CGFloat = 12.0
+    public static let topActionHorizontalPadding: CGFloat = 18.0
+    public static let topBarHorizontalMargin: CGFloat = 20.0
+    
     @Binding var sourceImage: CGImage
     var initialExif: ExifMetadata
     
@@ -114,6 +119,11 @@ public struct EditorView: View {
     public var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // 頂部導航操作列（重新設計右側模板、預覽、導出按鈕彼此間距與兩側邊距）
+                topNavigationBar
+                    .background(backgroundMode.stageBackgroundColor)
+                    .animation(.easeInOut(duration: 0.35), value: backgroundMode.stageBackgroundColor)
+                
                 // 上方主畫布舞台 (Aspect-Fit 獨立區域)
                 CanvasStageView(
                     image: sourceImage,
@@ -226,41 +236,7 @@ public struct EditorView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    CloseToolbarButton { dismiss() }
-                }
-                
-                ToolbarItemGroup(placement: .primaryAction) {
-                    // 模板鈕
-                    Button {
-                        showingTemplateSheet = true
-                    } label: {
-                        Image(systemName: "square.grid.2x2")
-                    }
-                    .accessibilityLabel("模板")
-                    
-                    // SNS 預覽鈕
-                    Button {
-                        showingSNSPreview = true
-                    } label: {
-                        Image(systemName: "eye")
-                    }
-                    .accessibilityLabel("SNS 預覽")
-                    
-                    // 導出分享鈕
-                    Button {
-                        performExport()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "square.and.arrow.up")
-                            Text("導出").fontWeight(.semibold)
-                        }
-                    }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showingTemplateSheet) {
                 templateManagementSheet
             }
@@ -362,6 +338,76 @@ public struct EditorView: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+    
+    // MARK: - 頂部導航操作列（重新設計右側模板、預覽、導出按鈕彼此間距與兩側邊距）
+    private var topNavigationBar: some View {
+        HStack {
+            // 左上關閉鈕
+            ChromeCircleButton(
+                systemName: "xmark",
+                accessibilityLabel: "取消"
+            ) {
+                dismiss()
+            }
+            
+            Spacer()
+            
+            // 右上操作膠囊（緊湊內部間距 12pt + 寬裕兩側內邊距 18pt）
+            HStack(spacing: Self.topActionInnerSpacing) {
+                // 模板鈕
+                Button {
+                    showingTemplateSheet = true
+                } label: {
+                    Image(systemName: "square.grid.2x2")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 28, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("模板")
+                
+                // SNS 預覽鈕
+                Button {
+                    showingSNSPreview = true
+                } label: {
+                    Image(systemName: "eye")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 28, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("SNS 預覽")
+                
+                Rectangle()
+                    .fill(Color.primary.opacity(0.15))
+                    .frame(width: 1, height: 15)
+                
+                // 導出分享鈕
+                Button {
+                    performExport()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 15, weight: .semibold))
+                        Text("導出")
+                            .font(.system(size: 15, weight: .semibold))
+                    }
+                    .frame(height: 36)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("導出")
+            }
+            .liquidGlassCapsule(
+                height: ChromeMetrics.capsuleHeight,
+                horizontalPadding: Self.topActionHorizontalPadding,
+                interactive: false
+            )
+        }
+        .padding(.horizontal, Self.topBarHorizontalMargin)
+        .padding(.top, 6)
+        .padding(.bottom, 4)
     }
     
     // MARK: - 導出與儲存

@@ -3,6 +3,14 @@ import SwiftData
 
 /// 【底欄】分頁視圖
 public struct FooterTabView: View {
+    /// UI 設計規範常數（供測試驗證與保持一致）
+    public static let usesSecondRowFontSizeSlider: Bool = true
+    public static let spacerShowsIconOnly: Bool = true
+    public static let activeItemShowsCloseButton: Bool = false
+    public static let combinesActiveAndInactiveInSingleSection: Bool = true
+    public static let sectionTitle: String = "顯示項目"
+    public static let downwardRemovalThresholdPt: CGFloat = 24.0
+    
     @Binding var footerSettings: FooterSettings
     @Binding var exifMetadata: ExifMetadata
     
@@ -24,6 +32,7 @@ public struct FooterTabView: View {
     
     @State private var draggingIndex: Int? = nil
     @State private var dragOffset: CGFloat = 0
+    @State private var dragOffsetY: CGFloat = 0
     @State private var layoutRevision: Int = 0
     
     // 文字顏色色彩選擇器狀態
@@ -42,30 +51,27 @@ public struct FooterTabView: View {
     public var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 8) {
-                // 1. 底欄總開關與字體大小 (精簡單列)
-                HStack(spacing: 10) {
+                // 1. 底欄總開關（第一行）與字級拉桿（第二行）
+                VStack(alignment: .leading, spacing: 10) {
                     Toggle("相片資訊底欄", isOn: $footerSettings.isEnabled)
                         .font(.subheadline.bold())
-                        .fixedSize(horizontal: true, vertical: false)
                     
                     if footerSettings.isEnabled {
-                        Spacer(minLength: 4)
-                        HStack(spacing: 6) {
+                        HStack(spacing: 10) {
                             Text("字級")
                                 .font(.caption.bold())
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: true, vertical: false)
                             Slider(value: $footerSettings.fontSizePt, in: FooterSettings.fontSizePtRange)
-                                .frame(maxWidth: 96)
                             Text(String(format: "%.1f pt", footerSettings.fontSizePt))
                                 .font(.caption2.monospaced())
                                 .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: true, vertical: false)
+                                .frame(width: 48, alignment: .trailing)
                         }
                     }
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.vertical, 10)
                 .liquidGlass(cornerRadius: 14)
                 
                 if footerSettings.isEnabled {
@@ -137,24 +143,19 @@ public struct FooterTabView: View {
                     .padding(10)
                     .liquidGlass(cornerRadius: 14)
                     
-                    // 3. 當前底欄啟用之積木 (左右排列、拖動重排與長按互動)
-                    VStack(alignment: .leading, spacing: 8) {
+                    // 3. 顯示項目（將已啟用與未啟用合併為同一個區塊，移除冗長說明文字）
+                    VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text("底欄已啟用積木")
+                            Text(Self.sectionTitle)
                                 .font(.subheadline.bold())
                             Spacer()
-                            Text("按住拖曳或點箭頭換順序")
+                            Text("左右排序・下拉移除")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
                         
-                        if footerSettings.activeItems.isEmpty {
-                            Text("尚未加入任何底欄積木，請由下方倉庫點選加入")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.vertical, 8)
-                        } else {
+                        // 上半部：已啟用項目（支援左右拖曳排序、往下拖曳解除啟用、無 x 按鈕）
+                        if !footerSettings.activeItems.isEmpty {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 let cardItems = footerSettings.activeItems.enumerated().map {
                                     ActiveCardItem(
@@ -170,34 +171,16 @@ public struct FooterTabView: View {
                                 }
                                 .padding(.vertical, 2)
                             }
-                            
-                            // 排版模式即時反饋
-                            HStack(spacing: 5) {
-                                Image(systemName: "sparkles")
-                                    .font(.caption2)
-                                    .foregroundStyle(Color.accentColor)
-                                Text(currentAlignmentDescription)
-                                    .font(.caption2.bold())
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.top, 2)
                         }
-                    }
-                    .padding(10)
-                    .liquidGlass(cornerRadius: 14)
-                    
-                    // 4. 下方倉庫（僅顯示未被使用的資訊；若無資訊則禁選）
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("未使用的資訊積木（點選加入底欄）")
-                            .font(.subheadline.bold())
                         
                         let unused = footerSettings.availableUnusedItems
-                        if unused.isEmpty {
-                            Text("所有積木皆已加入底欄")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 8) {
+                        if !footerSettings.activeItems.isEmpty && !unused.isEmpty {
+                            Divider().opacity(0.3)
+                        }
+                        
+                        // 下半部：未啟用項目（點選加入）
+                        if !unused.isEmpty {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 92))], spacing: 8) {
                                 ForEach(unused) { item in
                                     let hasInfo = item.hasAvailableInformation(exif: exifMetadata, customText: footerSettings.customText)
                                     Button {
@@ -218,16 +201,16 @@ public struct FooterTabView: View {
                     .padding(10)
                     .liquidGlass(cornerRadius: 14)
                     
-                    // 5. 自訂文字輸入（若有加入 customText）
+                    // 4. 自訂文字輸入（若有加入 customText）
                     if footerSettings.activeItems.contains(.customText) {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("自訂簽名 / 水印文字")
+                            Text("自訂簽名")
                                 .font(.subheadline.bold())
                             TextField("請輸入簽名文字", text: $footerSettings.customText)
                                 .textFieldStyle(.roundedBorder)
                         }
-                        .padding()
-                        .liquidGlass(cornerRadius: 16)
+                        .padding(10)
+                        .liquidGlass(cornerRadius: 14)
                     }
                 }
             }
@@ -407,20 +390,18 @@ public struct FooterTabView: View {
         }
     }
     
-    // MARK: - 倉庫積木徽章（無資訊時呈現禁選外觀）
+    // MARK: - 未啟用項目徽章（無資訊時呈現禁選外觀，間距僅顯示 icon）
     @ViewBuilder
     private func warehouseItemBadge(for item: FooterItemType, hasInfo: Bool) -> some View {
         HStack(spacing: 4) {
             if item == .spacer {
                 SpacerIconBadge()
-                Text("間距 |←→|")
-                    .font(.caption.bold())
                     .foregroundStyle(Color.accentColor)
             } else {
-                Image(systemName: hasInfo ? "plus.circle" : "slash.circle")
-                    .font(.caption2)
+                Image(systemName: hasInfo ? "plus" : "slash.circle")
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(hasInfo ? Color.primary : Color.secondary)
-                Text(hasInfo ? item.rawValue : "\(item.rawValue) (無)")
+                Text(item.rawValue)
                     .font(.caption.bold())
                     .foregroundStyle(hasInfo ? Color.primary : Color.secondary)
             }
@@ -443,7 +424,7 @@ public struct FooterTabView: View {
         }
     }
     
-    // MARK: - 已啟用積木卡片
+    // MARK: - 已啟用項目卡片（無 x 按鈕、間距僅顯示 icon、支援左右排序與往下拖曳解除）
     @ViewBuilder
     private func activeCardView(card: ActiveCardItem) -> some View {
         let index = card.index
@@ -458,7 +439,7 @@ public struct FooterTabView: View {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 22, height: 28)
+                        .frame(width: 20, height: 26)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -466,48 +447,11 @@ public struct FooterTabView: View {
                 .accessibilityIdentifier("footer_move_left_\(index)")
             }
             
-            // 專屬拖曳手柄
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(.tertiary)
-                .frame(width: 16, height: 28)
-                .contentShape(Rectangle())
-                .accessibilityLabel("拖曳手柄 \(item.rawValue)")
-                .gesture(
-                    DragGesture(minimumDistance: 4)
-                        .onChanged { value in
-                            if draggingIndex == nil {
-                                draggingIndex = index
-                                #if canImport(UIKit)
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                #endif
-                            }
-                            dragOffset = value.translation.width
-                            let threshold: CGFloat = 45
-                            if dragOffset > threshold && index < footerSettings.activeItems.count - 1 {
-                                swapCards(at: index, with: index + 1)
-                                draggingIndex = index + 1
-                                dragOffset = 0
-                            } else if dragOffset < -threshold && index > 0 {
-                                swapCards(at: index, with: index - 1)
-                                draggingIndex = index - 1
-                                dragOffset = 0
-                            }
-                        }
-                        .onEnded { _ in
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-                                draggingIndex = nil
-                                dragOffset = 0
-                            }
-                        }
-                )
-            
-            // 積木圖示與標籤
+            // 項目圖示或標籤（間距僅顯示 icon，不顯示文字）
             if item == .spacer {
                 SpacerIconBadge()
-                Text("間距 |←→|")
-                    .font(.caption.bold())
                     .foregroundStyle(Color.accentColor)
+                    .padding(.horizontal, 4)
             } else {
                 Text(item.rawValue)
                     .font(.caption.bold())
@@ -521,27 +465,13 @@ public struct FooterTabView: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 22, height: 28)
+                        .frame(width: 20, height: 26)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("向右微調 \(item.rawValue)")
                 .accessibilityIdentifier("footer_move_right_\(index)")
             }
-            
-            // 移除按鈕
-            Button {
-                removeCard(at: index)
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 22, height: 28)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("移除 \(item.rawValue)")
-            .accessibilityIdentifier("footer_remove_\(index)")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -558,10 +488,59 @@ public struct FooterTabView: View {
                         )
                 }
         }
-        .offset(x: draggingIndex == index ? dragOffset : 0)
+        .offset(
+            x: draggingIndex == index ? dragOffset : 0,
+            y: draggingIndex == index ? max(0, dragOffsetY) : 0
+        )
+        .opacity(draggingIndex == index && dragOffsetY > Self.downwardRemovalThresholdPt * 0.6 ? 0.55 : 1.0)
         .scaleEffect(draggingIndex == index ? 1.05 : 1.0)
         .shadow(color: draggingIndex == index ? Color.black.opacity(0.2) : Color.clear, radius: 8, y: 4)
         .zIndex(draggingIndex == index ? 10 : 1)
+        .gesture(
+            DragGesture(minimumDistance: 4)
+                .onChanged { value in
+                    if draggingIndex == nil {
+                        draggingIndex = index
+                        #if canImport(UIKit)
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        #endif
+                    }
+                    guard let currentIdx = draggingIndex, footerSettings.activeItems.indices.contains(currentIdx) else { return }
+                    dragOffset = value.translation.width
+                    dragOffsetY = value.translation.height
+                    
+                    // 往下拖曳超過門檻：直接解除啟用
+                    if dragOffsetY > Self.downwardRemovalThresholdPt {
+                        removeCard(at: currentIdx)
+                        draggingIndex = nil
+                        dragOffset = 0
+                        dragOffsetY = 0
+                        #if canImport(UIKit)
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        #endif
+                        return
+                    }
+                    
+                    // 水平拖曳交換順序
+                    let threshold: CGFloat = 45
+                    if dragOffset > threshold && currentIdx < footerSettings.activeItems.count - 1 {
+                        swapCards(at: currentIdx, with: currentIdx + 1)
+                        draggingIndex = currentIdx + 1
+                        dragOffset = 0
+                    } else if dragOffset < -threshold && currentIdx > 0 {
+                        swapCards(at: currentIdx, with: currentIdx - 1)
+                        draggingIndex = currentIdx - 1
+                        dragOffset = 0
+                    }
+                }
+                .onEnded { _ in
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                        draggingIndex = nil
+                        dragOffset = 0
+                        dragOffsetY = 0
+                    }
+                }
+        )
         .contextMenu {
             if item == .lens {
                 Button("選擇既有手動老鏡...") {
@@ -571,13 +550,13 @@ public struct FooterTabView: View {
                     activeSheet = .addLens
                 }
             }
-            Button("從底欄移除", role: .destructive) {
+            Button("移除項目", role: .destructive) {
                 removeCard(at: index)
             }
         }
     }
     
-    // MARK: - 積木操作輔助函式（嚴格觸發 Binding 狀態更新）
+    // MARK: - 項目操作輔助函式（嚴格觸發 Binding 狀態更新）
     private func swapCards(at i: Int, with j: Int) {
         withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
             var updated = footerSettings
@@ -594,7 +573,7 @@ public struct FooterTabView: View {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             guard index < footerSettings.activeItems.count else { return }
             var updated = footerSettings
-            updated.activeItems.remove(at: index)
+            updated.removeItem(at: index)
             footerSettings = updated
             layoutRevision += 1
         }

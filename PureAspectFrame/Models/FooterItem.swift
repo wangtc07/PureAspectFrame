@@ -146,7 +146,7 @@ public struct FooterSettings: Codable, Equatable, Sendable {
         activeItems.swapAt(i, j)
     }
     
-    /// 新增積木至底欄（若提供 exif 則驗證是否具備資訊，spacer 最多 2 個，其他積木不重複）
+    /// 新增項目至底欄（若提供 exif 則驗證是否具備資訊，spacer 最多 2 個，其他項目不重複）
     public mutating func addItem(_ item: FooterItemType, exif: ExifMetadata? = nil) {
         if let exif = exif {
             guard item.hasAvailableInformation(exif: exif, customText: customText) else { return }
@@ -158,6 +158,12 @@ public struct FooterSettings: Codable, Equatable, Sendable {
             guard !activeItems.contains(item) else { return }
         }
         activeItems.append(item)
+    }
+    
+    /// 移除指定索引之已啟用項目（支援往下拖曳解除啟用）
+    public mutating func removeItem(at index: Int) {
+        guard activeItems.indices.contains(index) else { return }
+        activeItems.remove(at: index)
     }
 }
 
