@@ -507,6 +507,19 @@ struct UIWorkflowTests {
         #expect(SNSPreviewView.actionIconNames(for: .instagram) == ["heart", "message", "arrow.2.squarepath", "paperplane", "bookmark"])
         #expect(SNSPreviewView.actionIconNames(for: .threads) == ["heart", "message", "arrow.2.squarepath", "paperplane"])
         #expect(SNSPreviewView.actionIconNames(for: .xTwitter) == ["bubble.left", "arrow.2.squarepath", "heart", "bookmark", "square.and.arrow.up"])
+
+        // 5. 驗證從實際 SNS 官方 SVG 向量路徑繪製之圖示 (Instagram / Threads / X) 皆能產生有效非空向量路徑
+        #expect(SNSPreviewView.officialActionIcons(for: .instagram) == [.igHeart, .igComment, .igRepost, .igShare, .igBookmark])
+        #expect(SNSPreviewView.officialActionIcons(for: .threads) == [.igHeart, .igComment, .igRepost, .igShare])
+        #expect(SNSPreviewView.officialActionIcons(for: .xTwitter) == [.xReply, .xRetweet, .xHeart, .xBookmark, .xShare])
+
+        let targetRect = CGRect(x: 0, y: 0, width: 24, height: 24)
+        for icon in SNSOfficialIcon.allCases {
+            let path = icon.path(in: targetRect)
+            #expect(!path.isEmpty)
+            #expect(path.boundingRect.width > 4.0)
+            #expect(path.boundingRect.height > 4.0)
+        }
     }
 }
 
