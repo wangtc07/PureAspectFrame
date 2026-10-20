@@ -521,5 +521,31 @@ struct UIWorkflowTests {
             #expect(path.boundingRect.height > 4.0)
         }
     }
+
+    @Test func testHomeViewSystemPhotosStyleSelectionAndRightStackedIconButtons() {
+        // 1. 驗證首頁右上角按鈕順序為「設定 -> 選擇」兩個按鈕
+        #expect(HomeView.topTrailingButtonOrder == ["settings", "select"])
+        
+        // 2. 驗證選擇模式參考系統相簿 UI：
+        // - 右上關閉按鈕為圓形 X ("xmark")
+        // - 底部左側圓形分享按鈕 ("square.and.arrow.up")、中間選取數量文字、右側圓形垃圾桶按鈕 ("trash")
+        // - 照片卡片選取標記位於右下角 (.bottomTrailing)，且未選取時不顯示空白圓圈
+        #expect(HomeView.selectionUsesSystemPhotosStyle == true)
+        #expect(HomeView.selectionCloseButtonIcon == "xmark")
+        #expect(HomeView.selectionBottomExportIcon == "square.and.arrow.up")
+        #expect(HomeView.selectionBottomDeleteIcon == "trash")
+        #expect(HomeView.selectionBadgeAlignment == .bottomTrailing)
+        #expect(HomeView.selectionShowsUnselectedCircle == false)
+        
+        // 3. 驗證快速導入與自訂編輯改成只有 icon，放在右邊垂直堆疊放置
+        #expect(HomeView.importButtonsShowIconOnly == true)
+        #expect(HomeView.importButtonsAreRightAlignedVerticalStack == true)
+        #expect(HomeView.quickImportIconName == "bolt.fill")
+        #expect(HomeView.customEditIconName == "plus")
+        
+        // 4. 驗證選取狀態文字格式
+        #expect(HomeView.selectionStatusText(count: 0) == "選取項目")
+        #expect(HomeView.selectionStatusText(count: 6) == "已選取 6 張相片")
+    }
 }
 

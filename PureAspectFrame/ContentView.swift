@@ -161,27 +161,28 @@ public struct ContentView: View {
 private struct HomeTestContainer: View {
     var initialSelectMode: Bool = false
     @Environment(\.modelContext) private var modelContext
-    @Query private var artworks: [ArtworkRecord]
+    @Query(sort: \ArtworkRecord.createdAt, order: .reverse) private var artworks: [ArtworkRecord]
     
     var body: some View {
         HomeView(
             initialSelectMode: initialSelectMode,
             initialSelection: initialSelectMode && !artworks.isEmpty ? Set([artworks[0].id]) : []
         )
-            .task {
-                let desc = FetchDescriptor<ArtworkRecord>()
-                if (try? modelContext.fetchCount(desc)) == 0 {
-                    let img = UIImage(cgImage: DemoImageProvider.makeDemoImage())
-                    let data = img.jpegData(compressionQuality: 0.8)
-                    let r1 = ArtworkRecord(title: "Leica M11 街拍", storagePolicy: .fullImage, thumbnailData: data, exportedImageData: data, diskSizeBytes: 1024 * 500)
-                    let r2 = ArtworkRecord(title: "富士經典底片配方", storagePolicy: .settingsOnly, thumbnailData: data, diskSizeBytes: 1024 * 12)
-                    let r3 = ArtworkRecord(title: "索尼 A7R5 風景", storagePolicy: .fullImage, thumbnailData: data, exportedImageData: data, diskSizeBytes: 1024 * 850)
-                    modelContext.insert(r1)
-                    modelContext.insert(r2)
-                    modelContext.insert(r3)
-                    try? modelContext.save()
-                }
+        .id(artworks.count)
+        .task {
+            let desc = FetchDescriptor<ArtworkRecord>()
+            if (try? modelContext.fetchCount(desc)) == 0 {
+                let img = UIImage(cgImage: DemoImageProvider.makeDemoImage())
+                let data = img.jpegData(compressionQuality: 0.8)
+                let r1 = ArtworkRecord(title: "Leica M11 街拍", storagePolicy: .fullImage, thumbnailData: data, exportedImageData: data, diskSizeBytes: 1024 * 500)
+                let r2 = ArtworkRecord(title: "富士經典底片配方", storagePolicy: .settingsOnly, thumbnailData: data, diskSizeBytes: 1024 * 12)
+                let r3 = ArtworkRecord(title: "索尼 A7R5 風景", storagePolicy: .fullImage, thumbnailData: data, exportedImageData: data, diskSizeBytes: 1024 * 850)
+                modelContext.insert(r1)
+                modelContext.insert(r2)
+                modelContext.insert(r3)
+                try? modelContext.save()
             }
+        }
     }
 }
 

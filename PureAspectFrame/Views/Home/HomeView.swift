@@ -5,6 +5,23 @@ import Photos
 
 /// 主頁視圖（遵循 ChekiLens 與 iOS 26 原生 Liquid Glass 設計語言）
 public struct HomeView: View {
+    /// UI 設計規範常數（對齊 iOS 系統相簿選擇介面與右側垂直堆疊圖示按鈕）
+    public static let topTrailingButtonOrder: [String] = ["settings", "select"]
+    public static let selectionUsesSystemPhotosStyle: Bool = true
+    public static let selectionCloseButtonIcon: String = "xmark"
+    public static let selectionBottomExportIcon: String = "square.and.arrow.up"
+    public static let selectionBottomDeleteIcon: String = "trash"
+    public static let selectionBadgeAlignment: Alignment = .bottomTrailing
+    public static let selectionShowsUnselectedCircle: Bool = false
+    public static let importButtonsShowIconOnly: Bool = true
+    public static let importButtonsAreRightAlignedVerticalStack: Bool = true
+    public static let quickImportIconName: String = "bolt.fill"
+    public static let customEditIconName: String = "plus"
+    
+    public static func selectionStatusText(count: Int) -> String {
+        count > 0 ? "已選取 \(count) 張相片" : "選取項目"
+    }
+    
     @Query(sort: \ArtworkRecord.createdAt, order: .reverse) private var artworks: [ArtworkRecord]
     @Environment(\.modelContext) private var modelContext
     
@@ -196,22 +213,10 @@ public struct HomeView: View {
         }
     }
     
-    // MARK: - 頂部懸浮工具列 (對齊 ChekiLens LibraryView 規範)
+    // MARK: - 頂部懸浮工具列 (對齊 iOS 系統相簿選擇 UI 與「設定 -> 選擇」按鈕順序)
     private var topFloatingHeaderBar: some View {
         HStack(alignment: .center) {
-            if isSelectMode {
-                // 多選模式：顯示已選取數量
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Color.accentColor)
-                    Text("已選取 \(selectionState.selectedIDs.count) 項")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.primary)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .liquidGlassCapsule(height: 32, horizontalPadding: 12, ink: .primary, interactive: false)
-            } else if !artworks.isEmpty {
+            if !artworks.isEmpty {
                 let totalBytes = artworks.reduce(0) { $0 + $1.diskSizeBytes }
                 let totalMB = Double(totalBytes) / (1024 * 1024)
                 Text("\(artworks.count) 個項目 · 已用 \(String(format: "%.1f MB", totalMB))")
@@ -224,9 +229,9 @@ public struct HomeView: View {
             
             Spacer()
             
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 if isSelectMode {
-                    // 全選 / 取消全選按鈕
+                    // 全選 / 取消全選膠囊按鈕
                     let allIDs = artworks.map(\.id)
                     let isAllSelected = selectionState.selectedIDs.count == artworks.count && !artworks.isEmpty
                     Button {
@@ -236,62 +241,50 @@ public struct HomeView: View {
                     } label: {
                         Text(isAllSelected ? "取消全選" : "全選")
                             .font(.subheadline.bold())
-                            .foregroundStyle(Color.accentColor)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .liquidGlassCapsule(height: 32, horizontalPadding: 10, ink: .primary)
-                            .contentShape(Capsule())
+                            .foregroundStyle(.primary)
+                            .liquidGlassCapsule(height: ChromeMetrics.capsuleHeight, horizontalPadding: 14, ink: .primary)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("home_select_all_button")
                     
-                    // 完成按鈕
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isSelectMode = false
-                            selectionState.deselectAll()
-                        }
-                    } label: {
-                        Text("完成")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .liquidGlassCapsule(height: 32, horizontalPadding: 12, ink: .primary)
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("home_select_done_button")
-                } else {
-                    if !artworks.isEmpty {
-                        // 選擇按鈕 (右上)
-                        Button {
+                    // 參考系統相簿：右上角圓形 X 結束選擇按鈕
+                    ChromeCircleButton(
+                        systemName: Self.selectionCloseButtonIcon,
+                        ink: .primary,
+                        accessibilityLabel: "完成",
+                        action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
-                                isSelectMode = true
+                                isSelectMode = false
                                 selectionState.deselectAll()
                             }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "checkmark.circle")
-                                Text("選擇")
-                            }
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .liquidGlassCapsule(height: 32, horizontalPadding: 10, ink: .primary)
-                            .contentShape(Capsule())
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("home_select_button")
-                    }
-                    
+                    )
+                    .accessibilityIdentifier("home_select_done_button")
+                } else {
+                    // 首頁右上角順序：1. 設定 -> 2. 選擇
                     ChromeCircleButton(
                         systemName: "gearshape",
                         ink: .primary,
                         accessibilityLabel: "設定",
                         action: { activeSheet = .settings }
                     )
+                    .accessibilityIdentifier("home_settings_button")
+                    
+                    if !artworks.isEmpty {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isSelectMode = true
+                                selectionState.deselectAll()
+                            }
+                        } label: {
+                            Text("選擇")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.primary)
+                                .liquidGlassCapsule(height: ChromeMetrics.capsuleHeight, horizontalPadding: 16, ink: .primary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("home_select_button")
+                    }
                 }
             }
         }
@@ -376,13 +369,13 @@ public struct HomeView: View {
         }
     }
     
-    // MARK: - 單一作品卡片視圖
+    // MARK: - 單一作品卡片視圖（選擇狀態完全對齊 iOS 系統相簿：右下角藍色白邊打勾、未選取不顯示空圓圈）
     @ViewBuilder
     private func artworkCardView(for record: ArtworkRecord) -> some View {
         let isSelected = selectionState.isSelected(record.id)
         
         VStack(alignment: .leading, spacing: 6) {
-            ZStack(alignment: .topTrailing) {
+            ZStack {
                 if let thumbData = record.thumbnailData,
                    let uiImg = UIImage(data: thumbData) {
                     Image(uiImage: uiImg)
@@ -401,27 +394,42 @@ public struct HomeView: View {
                         }
                 }
                 
-                HStack(alignment: .top) {
-                    if isSelectMode {
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(isSelected ? Color.accentColor : Color.white.opacity(0.9))
-                            .background {
-                                if !isSelected {
-                                    Circle().fill(Color.black.opacity(0.35))
-                                }
-                            }
+                // 右上角儲存模式標籤
+                VStack {
+                    HStack {
+                        Spacer()
+                        Text(record.storagePolicy == .fullImage ? "已存圖" : "僅設定")
+                            .font(.system(size: 10, weight: .bold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .liquidGlassCapsule(height: 20, horizontalPadding: 6, ink: .primary, interactive: false)
                             .padding(6)
                     }
-                    
                     Spacer()
-                    
-                    Text(record.storagePolicy == .fullImage ? "已存圖" : "僅設定")
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .liquidGlassCapsule(height: 20, horizontalPadding: 6, ink: .primary, interactive: false)
-                        .padding(6)
+                }
+                
+                // 參考系統相簿 (第三張圖)：僅在被選取時於右下角顯示藍色白框實心勾勾
+                if isSelectMode && isSelected {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            ZStack {
+                                Circle()
+                                    .fill(Color.accentColor)
+                                    .frame(width: 24, height: 24)
+                                Circle()
+                                    .strokeBorder(Color.white, lineWidth: 1.8)
+                                    .frame(width: 24, height: 24)
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(Color.white)
+                            }
+                            .shadow(color: Color.black.opacity(0.25), radius: 2, y: 1)
+                            .padding(8)
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                    }
                 }
             }
             
@@ -434,12 +442,6 @@ public struct HomeView: View {
         }
         .padding(8)
         .liquidGlass(cornerRadius: 16)
-        .overlay {
-            if isSelectMode && isSelected {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(Color.accentColor, lineWidth: 2)
-            }
-        }
         .contentShape(Rectangle())
         .onTapGesture {
             if isSelectMode {
@@ -471,7 +473,7 @@ public struct HomeView: View {
         .accessibilityAddTraits(.isButton)
     }
     
-    // MARK: - 底部浮動液態玻璃操作列 (完全對齊 ChekiLens 原生透明液態玻璃風格)
+    // MARK: - 底部浮動液態玻璃操作列
     private var bottomActionFloatingBar: some View {
         Group {
             if #available(iOS 26.0, *) {
@@ -495,90 +497,78 @@ public struct HomeView: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelectMode)
     }
     
-    // MARK: - 多選模式底部操作按鈕（導出與刪除）
+    // MARK: - 多選模式底部操作列（100% 參考系統相簿第三張圖：左圓形分享鈕 + 中間選取數量文字 + 右圓形垃圾桶刪除鈕）
     private var selectionBottomButtons: some View {
         let count = selectionState.selectedIDs.count
-        return HStack(spacing: ChromeMetrics.groupSpacing) {
-            // 導出所選按鈕
+        return HStack(alignment: .center) {
+            // 左下：圓形分享導出按鈕
             Button {
                 exportSelectedArtworks()
             } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: ChromeMetrics.iconPointSize, weight: .semibold))
-                    Text(count > 0 ? "導出 (\(count))" : "導出")
-                        .font(.headline)
-                }
-                .frame(maxWidth: .infinity)
-                .liquidGlassCapsule(
-                    height: ChromeMetrics.capsuleHeight,
-                    ink: count > 0 ? .primary : .secondary
-                )
+                Image(systemName: Self.selectionBottomExportIcon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .liquidGlassCircle(size: 48, ink: count > 0 ? .primary : .secondary)
             }
             .buttonStyle(.plain)
             .disabled(count == 0)
             .opacity(count > 0 ? 1.0 : 0.45)
+            .accessibilityLabel("導出")
             .accessibilityIdentifier("home_batch_export_button")
             
-            // 刪除所選按鈕
+            Spacer()
+            
+            // 中間：選取數量狀態文字
+            Text(Self.selectionStatusText(count: count))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .accessibilityIdentifier("home_selection_status_text")
+            
+            Spacer()
+            
+            // 右下：圓形垃圾桶刪除按鈕
             Button {
                 showingBatchDeleteAlert = true
             } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "trash")
-                        .font(.system(size: ChromeMetrics.iconPointSize, weight: .bold))
-                    Text(count > 0 ? "刪除 (\(count))" : "刪除")
-                        .font(.headline.bold())
-                }
-                .frame(maxWidth: .infinity)
-                .background {
-                    Capsule()
-                        .fill(count > 0 ? Color.red.opacity(0.18) : Color.primary.opacity(0.05))
-                        .overlay {
-                            if count > 0 {
-                                Capsule().strokeBorder(Color.red.opacity(0.4), lineWidth: 1)
-                            }
-                        }
-                }
-                .foregroundStyle(count > 0 ? Color.red : Color.secondary)
-                .frame(height: ChromeMetrics.capsuleHeight)
+                Image(systemName: Self.selectionBottomDeleteIcon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .liquidGlassCircle(size: 48, ink: count > 0 ? .primary : .secondary)
             }
             .buttonStyle(.plain)
             .disabled(count == 0)
             .opacity(count > 0 ? 1.0 : 0.45)
+            .accessibilityLabel("刪除")
             .accessibilityIdentifier("home_batch_delete_button")
         }
     }
     
+    // MARK: - 一般模式右側垂直堆疊圖示按鈕（快速導入 + 自訂編輯，僅顯示 Icon）
     private var bottomButtonsContent: some View {
-        HStack(spacing: ChromeMetrics.groupSpacing) {
-            // 快速導入按鈕（透明液態玻璃膠囊）
-            PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
-                HStack(spacing: 8) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: ChromeMetrics.iconPointSize, weight: .semibold))
-                    Text("快速導入")
-                        .font(.headline)
-                }
-                .frame(maxWidth: .infinity)
-                .liquidGlassCapsule(height: ChromeMetrics.capsuleHeight, ink: .primary)
-            }
-            .buttonStyle(.plain)
-            .simultaneousGesture(TapGesture().onEnded { isQuickImportMode = true })
+        HStack {
+            Spacer()
             
-            // 自訂編輯按鈕（透明液態玻璃膠囊）
-            PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus")
-                        .font(.system(size: ChromeMetrics.iconPointSize, weight: .bold))
-                    Text("自訂編輯")
-                        .font(.headline.bold())
+            VStack(spacing: 12) {
+                // 上方：快速導入圓形圖示按鈕
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
+                    Image(systemName: Self.quickImportIconName)
+                        .font(.system(size: 19, weight: .semibold))
+                        .liquidGlassCircle(size: 50, ink: .primary)
                 }
-                .frame(maxWidth: .infinity)
-                .liquidGlassCapsule(height: ChromeMetrics.capsuleHeight, ink: .primary)
+                .buttonStyle(.plain)
+                .simultaneousGesture(TapGesture().onEnded { isQuickImportMode = true })
+                .accessibilityLabel("快速導入")
+                .accessibilityIdentifier("home_quick_import_button")
+                
+                // 下方：自訂編輯圓形圖示按鈕
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
+                    Image(systemName: Self.customEditIconName)
+                        .font(.system(size: 21, weight: .bold))
+                        .liquidGlassCircle(size: 50, ink: .primary)
+                }
+                .buttonStyle(.plain)
+                .simultaneousGesture(TapGesture().onEnded { isQuickImportMode = false })
+                .accessibilityLabel("自訂編輯")
+                .accessibilityIdentifier("home_custom_edit_button")
             }
-            .buttonStyle(.plain)
-            .simultaneousGesture(TapGesture().onEnded { isQuickImportMode = false })
         }
     }
     
