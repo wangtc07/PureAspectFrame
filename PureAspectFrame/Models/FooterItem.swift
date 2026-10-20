@@ -1,4 +1,8 @@
 import Foundation
+import CoreGraphics
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// 底欄積木類型
 public enum FooterItemType: String, CaseIterable, Identifiable, Codable, Sendable {
@@ -58,13 +62,53 @@ public struct FooterSettings: Codable, Equatable, Sendable {
     /// 自訂文字內容（當 activeItems 包含 customText 時顯示）
     public var customText: String = "Shot on PureAspect"
     
-    /// 底欄字體大小比例（相對於畫布基準高度，例如 0.018 ~ 0.035）
-    public var fontSizeScale: Double = 0.024
+    /// 虛擬 pt 參考畫布短邊基準（將畫布短邊 min(width, height) 正規化為 1000 虛擬 pt）
+    public static let referenceShortSidePt: CGFloat = 1000.0
+    
+    /// 虛擬 pt 調整範圍（支援最低 0.0 pt 到 36.0 pt）
+    public static let fontSizePtRange: ClosedRange<Double> = 0.0...36.0
+    
+    /// 底欄字體大小比例（相對於畫布短邊，0.0 ~ 0.036 對應 0.0 ~ 36.0 虛擬 pt）
+    public var fontSizeScale: Double = 0.018
+    
+    /// 底欄文字虛擬 pt 數值（以畫布短邊 1000 虛擬 pt 為基準之大寫字母實際高度 Cap Height，支援最低 0 pt）
+    public var fontSizePt: Double {
+        get { max(0.0, fontSizeScale * Double(Self.referenceShortSidePt)) }
+        set { fontSizeScale = max(0.0, newValue / Double(Self.referenceShortSidePt)) }
+    }
     
     /// 底欄文字顏色（自訂十六進位值，預設為灰色 #8E8E93 以搭配白底）
     public var textColorHex: String = "#8E8E93"
     
     public init() {}
+    
+    /// 計算在指定畫布像素/點尺寸下，大寫字母實際視覺高度 (Cap Height)
+    /// 以畫布短邊 min(canvasWidth, canvasHeight) 為基準，確保不同長寬比與不同畫素下文字視覺大小一致
+    public func targetCapHeight(canvasWidth: CGFloat, canvasHeight: CGFloat) -> CGFloat {
+        guard isEnabled, fontSizeScale > 0 else { return 0.0 }
+        let shortSide = min(max(0, canvasWidth), max(0, canvasHeight))
+        return shortSide * CGFloat(fontSizeScale)
+    }
+    
+    /// 將目標大寫字母高度 (Cap Height) 換算為系統字體所需的實際 Point Size (Em 框高度)
+    public func resolvedFontPointSize(canvasWidth: CGFloat, canvasHeight: CGFloat) -> CGFloat {
+        let capH = targetCapHeight(canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+        guard capH > 0 else { return 0.0 }
+        #if canImport(UIKit)
+        let refFont = UIFont.systemFont(ofSize: 100.0, weight: .medium)
+        let capRatio = max(0.1, refFont.capHeight / 100.0)
+        return capH / capRatio
+        #else
+        return capH / 0.7046
+        #endif
+    }
+    
+    /// 計算在指定畫布尺寸下的底欄預留高度（直接與畫布短邊及文字實際高度連動，最低為 0）
+    public func resolvedFooterHeight(canvasWidth: CGFloat, canvasHeight: CGFloat) -> CGFloat {
+        let capH = targetCapHeight(canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+        guard capH > 0 else { return 0.0 }
+        return capH * 3.2
+    }
     
     /// 下方倉庫可用的未啟用積木
     public var availableUnusedItems: [FooterItemType] {

@@ -153,7 +153,7 @@ public struct CanvasStageView: View {
                         let padLeft = borderSettings.unit == .percent ? (cW * borderSettings.paddingLeft / 100.0) : borderSettings.paddingLeft
                         let padRight = borderSettings.unit == .percent ? (cW * borderSettings.paddingRight / 100.0) : borderSettings.paddingRight
                         
-                        let footerHeight: CGFloat = footerSettings.isEnabled ? (cH * CGFloat(footerSettings.fontSizeScale) * 2.8) : 0
+                        let footerHeight: CGFloat = footerSettings.resolvedFooterHeight(canvasWidth: cW, canvasHeight: cH)
                         
                         let photoWidth = max(20, cW - padLeft - padRight)
                         let photoHeight = max(20, cH - padTop - padBottom - footerHeight)
@@ -241,9 +241,9 @@ public struct CanvasStageView: View {
                             }
                             
                             // 底欄內容
-                            if footerSettings.isEnabled {
+                            if footerSettings.isEnabled && footerHeight > 0 {
                                 let sections = footerSettings.layoutSections
-                                let fontScaledSize = cH * CGFloat(footerSettings.fontSizeScale)
+                                let fontScaledSize = footerSettings.resolvedFontPointSize(canvasWidth: cW, canvasHeight: cH)
                                 
                                 HStack(spacing: 8) {
                                     if sections.count <= 1 {
@@ -266,6 +266,8 @@ public struct CanvasStageView: View {
                                     }
                                 }
                                 .foregroundStyle(Color(hex: footerSettings.textColorHex))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.35)
                                 .padding(.horizontal, 4)
                                 .frame(width: photoWidth, height: footerHeight)
                                 .position(x: padLeft + (photoWidth / 2.0), y: cH - padBottom - (footerHeight / 2.0))
@@ -507,7 +509,7 @@ public struct CanvasStageView: View {
         photoWidth: CGFloat,
         photoHeight: CGFloat
     ) -> some View {
-        let footerHeight: CGFloat = footerSettings.isEnabled ? (cH * CGFloat(footerSettings.fontSizeScale) * 2.8) : 0
+        let footerHeight: CGFloat = footerSettings.resolvedFooterHeight(canvasWidth: cW, canvasHeight: cH)
         ZStack {
             let maxRange: CGFloat = borderSettings.unit == .percent ? 40 : 300
             

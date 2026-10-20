@@ -43,21 +43,24 @@ public struct FooterTabView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 8) {
                 // 1. 底欄總開關與字體大小 (精簡單列)
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     Toggle("相片資訊底欄", isOn: $footerSettings.isEnabled)
                         .font(.subheadline.bold())
+                        .fixedSize(horizontal: true, vertical: false)
                     
                     if footerSettings.isEnabled {
-                        Spacer()
+                        Spacer(minLength: 4)
                         HStack(spacing: 6) {
                             Text("字級")
                                 .font(.caption.bold())
                                 .foregroundStyle(.secondary)
-                            Slider(value: $footerSettings.fontSizeScale, in: 0.015...0.038)
-                                .frame(width: 90)
-                            Text(String(format: "%.1f%%", footerSettings.fontSizeScale * 100))
+                                .fixedSize(horizontal: true, vertical: false)
+                            Slider(value: $footerSettings.fontSizePt, in: FooterSettings.fontSizePtRange)
+                                .frame(maxWidth: 96)
+                            Text(String(format: "%.1f pt", footerSettings.fontSizePt))
                                 .font(.caption2.monospaced())
                                 .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                     }
                 }

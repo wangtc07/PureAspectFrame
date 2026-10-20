@@ -75,5 +75,7 @@ public struct CameraBrandLogoView: View {
                     .font(.system(size: height * 0.9))
             }
         }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
     }
 }

@@ -53,8 +53,11 @@ public final class ImageRendererService: Sendable {
             sourceImage: image
         )
         
-        // 2. 計算底欄高度與保留空間
-        let footerHeight: CGFloat = footerSettings.isEnabled ? (canvasRect.height * CGFloat(footerSettings.fontSizeScale) * 2.8) : 0
+        // 2. 計算底欄高度與保留空間（統一以畫布短邊 min(W, H) 與虛擬 pt 計算，支援最低 0 pt）
+        let footerHeight: CGFloat = footerSettings.resolvedFooterHeight(
+            canvasWidth: canvasRect.width,
+            canvasHeight: canvasRect.height
+        )
         
         // 3. 計算照片框四邊留白邊距
         let padTop: CGFloat
@@ -115,7 +118,7 @@ public final class ImageRendererService: Sendable {
         context.restoreGState()
         
         // 6. 繪製相片底欄文字與標誌
-        if footerSettings.isEnabled {
+        if footerSettings.isEnabled && footerHeight > 0 {
             let footerRect = CGRect(x: padLeft, y: padBottom, width: photoAreaWidth, height: footerHeight)
             drawFooter(
                 context: context,
@@ -123,7 +126,8 @@ public final class ImageRendererService: Sendable {
                 settings: footerSettings,
                 backgroundMode: backgroundMode,
                 exif: exif,
-                canvasWidth: canvasRect.width
+                canvasWidth: canvasRect.width,
+                canvasHeight: canvasRect.height
             )
         }
         
@@ -233,7 +237,8 @@ public final class ImageRendererService: Sendable {
         settings: FooterSettings,
         backgroundMode: BackgroundMode,
         exif: ExifMetadata,
-        canvasWidth: CGFloat
+        canvasWidth: CGFloat,
+        canvasHeight: CGFloat
     ) {
         let sections = settings.layoutSections
         
@@ -266,7 +271,8 @@ public final class ImageRendererService: Sendable {
         }
         
         #if canImport(UIKit)
-        var currentFontSize = max(10.0, canvasWidth * CGFloat(settings.fontSizeScale))
+        var currentFontSize = settings.resolvedFontPointSize(canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+        guard currentFontSize > 0.5 else { return }
         var font = UIFont.systemFont(ofSize: currentFontSize, weight: .medium)
         let textColor: UIColor
         if let rgb = ColorSpaceService.hexToRgb(settings.textColorHex) {

@@ -190,5 +190,46 @@ struct ExifParserAndFooterTests {
         settings.addItem(.camera, exif: validExif)
         #expect(settings.activeItems == [.spacer, .camera])
     }
+
+    @Test func testFooterVirtualPtCrossRatioAndResolutionInvariance() {
+        var settings = FooterSettings()
+        
+        // 1. 驗證支援最低 0.0 pt (0%)，此時字級與底欄高度皆為 0
+        settings.fontSizePt = 0.0
+        #expect(settings.fontSizePt == 0.0)
+        #expect(settings.fontSizeScale == 0.0)
+        #expect(settings.resolvedFontPointSize(canvasWidth: 1080, canvasHeight: 1350) == 0.0)
+        #expect(settings.resolvedFooterHeight(canvasWidth: 1080, canvasHeight: 1350) == 0.0)
+        #expect(FooterSettings.fontSizePtRange.lowerBound == 0.0)
+        
+        // 2. 設定為 18.0 虛擬 pt，驗證在不同畫布比例 (1:1, 4:5 直式, 5:4 橫式, 9:16, 16:9) 下，只要短邊相同，文字大小與底欄高度 100% 相同
+        settings.fontSizePt = 18.0
+        let pt1x1 = settings.resolvedFontPointSize(canvasWidth: 1080, canvasHeight: 1080)
+        let pt4x5 = settings.resolvedFontPointSize(canvasWidth: 1080, canvasHeight: 1350)
+        let pt5x4 = settings.resolvedFontPointSize(canvasWidth: 1350, canvasHeight: 1080)
+        let pt9x16 = settings.resolvedFontPointSize(canvasWidth: 1080, canvasHeight: 1920)
+        let pt16x9 = settings.resolvedFontPointSize(canvasWidth: 1920, canvasHeight: 1080)
+        
+        #expect(pt1x1 > 0)
+        #expect(abs(pt1x1 - pt4x5) < 0.001)
+        #expect(abs(pt4x5 - pt5x4) < 0.001)
+        #expect(abs(pt4x5 - pt9x16) < 0.001)
+        #expect(abs(pt9x16 - pt16x9) < 0.001)
+        
+        let h4x5 = settings.resolvedFooterHeight(canvasWidth: 1080, canvasHeight: 1350)
+        let h5x4 = settings.resolvedFooterHeight(canvasWidth: 1350, canvasHeight: 1080)
+        let h16x9 = settings.resolvedFooterHeight(canvasWidth: 1920, canvasHeight: 1080)
+        #expect(abs(h4x5 - h5x4) < 0.001)
+        #expect(abs(h4x5 - h16x9) < 0.001)
+        
+        // 3. 驗證大寫字母實際高度 (Cap Height) 精準對應短邊虛擬 pt 比例 (18 / 1000 * 1080 = 19.44 px)
+        let targetCap = settings.targetCapHeight(canvasWidth: 1080, canvasHeight: 1350)
+        #expect(abs(targetCap - 19.44) < 0.01)
+        
+        // 4. 驗證不同畫素 (1080x1350 預覽 vs 4320x5400 高畫素原圖) 下，文字佔畫面短邊的視覺比例 100% 一致
+        let ptLowRes = settings.resolvedFontPointSize(canvasWidth: 1080, canvasHeight: 1350)
+        let ptHighRes = settings.resolvedFontPointSize(canvasWidth: 4320, canvasHeight: 5400)
+        #expect(abs((ptLowRes / 1080.0) - (ptHighRes / 4320.0)) < 0.0001)
+    }
 }
 
