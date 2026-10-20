@@ -66,7 +66,8 @@ public struct SNSPreviewView: View {
     
     @Environment(\.dismiss) private var dismiss
     
-    // MARK: - 中性假資料常數与互動圖示規格
+    // MARK: - 中性假資料常數與互動圖示規格
+    public static let usesLeadingCloseButton: Bool = true
     public static let placeholderUsername: String = "username"
     public static let placeholderHandle: String = "@user_id"
     public static let placeholderCaption: String = "2026.10.20  📷 ✨"
@@ -221,8 +222,8 @@ public struct SNSPreviewView: View {
             .navigationTitle("SNS 發佈預覽")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("關閉") { dismiss() }
+                ToolbarItem(placement: .cancellationAction) {
+                    CloseToolbarButton { dismiss() }
                 }
             }
         }

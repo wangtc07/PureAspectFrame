@@ -500,7 +500,8 @@ struct UIWorkflowTests {
         #expect(SNSPreviewView.xTwitterCarouselGap == 4.0)
         #expect(SNSPreviewView.xTwitterMediaCornerRadius == 12.0)
 
-        // 4. 驗證貼文區域中性假資料（帳號、日期符號內文）與各平台真實互動/分享圖示列
+        // 4. 驗證貼文區域中性假資料（帳號、日期符號內文）、左上角 X 關閉按鈕與各平台真實互動/分享圖示列
+        #expect(SNSPreviewView.usesLeadingCloseButton == true)
         #expect(!SNSPreviewView.placeholderUsername.isEmpty)
         #expect(SNSPreviewView.placeholderCaption.contains("2026"))
         #expect(SNSPreviewView.actionIconNames(for: .instagram) == ["heart", "message", "arrow.2.squarepath", "paperplane", "bookmark"])
