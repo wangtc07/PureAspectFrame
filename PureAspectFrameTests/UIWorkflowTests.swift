@@ -499,6 +499,13 @@ struct UIWorkflowTests {
         #expect(abs(x2x3Size.height - 330.0) < 0.1)
         #expect(SNSPreviewView.xTwitterCarouselGap == 4.0)
         #expect(SNSPreviewView.xTwitterMediaCornerRadius == 12.0)
+
+        // 4. 驗證貼文區域中性假資料（帳號、日期符號內文）與各平台真實互動/分享圖示列
+        #expect(!SNSPreviewView.placeholderUsername.isEmpty)
+        #expect(SNSPreviewView.placeholderCaption.contains("2026"))
+        #expect(SNSPreviewView.actionIconNames(for: .instagram) == ["heart", "message", "arrow.2.squarepath", "paperplane", "bookmark"])
+        #expect(SNSPreviewView.actionIconNames(for: .threads) == ["heart", "message", "arrow.2.squarepath", "paperplane"])
+        #expect(SNSPreviewView.actionIconNames(for: .xTwitter) == ["bubble.left", "arrow.2.squarepath", "heart", "bookmark", "square.and.arrow.up"])
     }
 }
 
