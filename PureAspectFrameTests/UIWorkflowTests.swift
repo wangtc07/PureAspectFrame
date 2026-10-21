@@ -545,7 +545,7 @@ struct UIWorkflowTests {
         
         // 4. 驗證選取狀態文字格式
         #expect(HomeView.selectionStatusText(count: 0) == "選取項目")
-        #expect(HomeView.selectionStatusText(count: 6) == "已選取 6 張相片")
+        #expect(HomeView.selectionStatusText(count: 6) == "已選取 6 張")
     }
 }
 
