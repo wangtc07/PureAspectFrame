@@ -1379,13 +1379,13 @@ nonisolated struct LayerStack: Codable, Equatable, Sendable {
 
 **模型**
 
-- [ ] **E1** `Models/Document/FrameDocument.swift`：儲存屬性只有 `layers`、`background`、`signatureText`、`lensOverride`；`schemaVersion = 3`；解碼實作 `bothBorderModels`。不要建立 `CanvasSpec`、`PaddingSpec`、`FooterSpec`，也不要實作 v2。— 驗收：`FrameDocumentShapeTests` 的 Mirror 標籤與 JSON 頂層鍵恰為這四個；同時含 `layers` 與 `padding` 的 JSON 得到 `bothBorderModels`；`PhotoLayer` 的 coding key 沒有 `crop` 與 `canvas`。
-- [ ] **E2** `LayerStack` 與 `BorderRing`：非 Optional 的 `photo`、`private(set) borders`、`[InfoSlot: InfoBar]`、Optional `split`、`ordered`、`LayerRef`。照片不在可刪列舉裡。— 驗收：`ordered` 恆以照片開頭；`moveBorder` 後順序跟著變；沒有刪除照片的 API。
-- [ ] **E3** `Percent`（0…50）、`BorderSizing`、`RatioSizing`、`CanvasAspect`、`RatioRole`。`CanvasRatio` 去重仍在這一步做（原 P10），只給畫布比例用。— 驗收：`Percent(80)` 的值是 50；逐邊 `(7,9,3,4)` 轉等距得到 7；等距 6 轉逐邊時四邊都是 6；`.drives` 不能有兩個。
-- [ ] **E4** `ratioLinks` 與 `linkRatio`／`unlinkRatio`／`normalizeLinks`，以及「設定比例使自己變成唯一驅動者」。只連比例、星狀、即時同步。刪除驅動者時，邊寬較大的跟隨者接任驅動，其餘保留比例並脫離。使用者關掉連結而驅動者還在時，該圈只是脫離。— 驗收：W3 的連結斷言，含刪除 A 後 B 成為驅動者且仍是 4:5；對等距環呼叫 `linkRatio` 失敗；A 跟 B、再讓 B 跟 C 時失敗；對跟隨者設定比例後，它是唯一驅動者，舊驅動者為脫離且顏色不變。
-- [ ] **E5** `ImageRatio` 六個、`PhotoLayer`、`CropTransform` 移出文件。— 驗收：六個 case 的長寬比；文件 JSON 不含 `"crop"`；套用模板前後 crops 相同。
-- [ ] **E6** `InfoBar`：8 個 `InfoSlot`、三區塊、磚塊（含固定文字與水印）。— 驗收：`InfoSlot` 的 case 數是 8；對已占用的格子設定是取代而不是新增；8 格都用時不能再加。
-- [ ] **E7** `SplitLayer`：張數 2…10，縫是自訂百分比或平台。平台三個。— 驗收：張數 12 會被夾成 10；平台列舉不含小紅書。
+- [x] **E1** `Models/Document/FrameDocument.swift`：儲存屬性只有 `layers`、`background`、`signatureText`、`lensOverride`；`schemaVersion = 3`；解碼實作 `bothBorderModels`。不要建立 `CanvasSpec`、`PaddingSpec`、`FooterSpec`，也不要實作 v2。— 驗收：`FrameDocumentShapeTests` 的 Mirror 標籤與 JSON 頂層鍵恰為這四個；同時含 `layers` 與 `padding` 的 JSON 得到 `bothBorderModels`；`PhotoLayer` 的 coding key 沒有 `crop` 與 `canvas`。
+- [x] **E2** `LayerStack` 與 `BorderRing`：非 Optional 的 `photo`、`private(set) borders`、`[InfoSlot: InfoBar]`、Optional `split`、`ordered`、`LayerRef`。照片不在可刪列舉裡。— 驗收：`ordered` 恆以照片開頭；`moveBorder` 後順序跟著變；沒有刪除照片的 API。
+- [x] **E3** `Percent`（0…50）、`BorderSizing`、`RatioSizing`、`CanvasAspect`、`RatioRole`。`CanvasRatio` 去重仍在這一步做（原 P10），只給畫布比例用。— 驗收：`Percent(80)` 的值是 50；逐邊 `(7,9,3,4)` 轉等距得到 7；等距 6 轉逐邊時四邊都是 6；`.drives` 不能有兩個。
+- [x] **E4** `ratioLinks` 與 `linkRatio`／`unlinkRatio`／`normalizeLinks`，以及「設定比例使自己變成唯一驅動者」。只連比例、星狀、即時同步。刪除驅動者時，邊寬較大的跟隨者接任驅動，其餘保留比例並脫離。使用者關掉連結而驅動者還在時，該圈只是脫離。— 驗收：W3 的連結斷言，含刪除 A 後 B 成為驅動者且仍是 4:5；對等距環呼叫 `linkRatio` 失敗；A 跟 B、再讓 B 跟 C 時失敗；對跟隨者設定比例後，它是唯一驅動者，舊驅動者為脫離且顏色不變。
+- [x] **E5** `ImageRatio` 六個、`PhotoLayer`、`CropTransform` 移出文件。— 驗收：六個 case 的長寬比；文件 JSON 不含 `"crop"`；套用模板前後 crops 相同。
+- [x] **E6** `InfoBar`：8 個 `InfoSlot`、三區塊、磚塊（含固定文字與水印）。— 驗收：`InfoSlot` 的 case 數是 8；對已占用的格子設定是取代而不是新增；8 格都用時不能再加。
+- [x] **E7** `SplitLayer`：張數 2…10，縫是自訂百分比或平台。平台三個。— 驗收：張數 12 會被夾成 10；平台列舉不含小紅書。
 
 **引擎**
 
