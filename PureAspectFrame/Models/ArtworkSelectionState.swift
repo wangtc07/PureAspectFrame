@@ -27,8 +27,12 @@ public struct ArtworkSelectionState: Sendable, Equatable {
         selectedIDs.removeAll()
     }
     
+    public func isAllSelected(of allIDs: [UUID]) -> Bool {
+        !allIDs.isEmpty && selectedIDs.count == allIDs.count
+    }
+
     public mutating func toggleSelectAll(from allIDs: [UUID]) {
-        if selectedIDs.count == allIDs.count && !allIDs.isEmpty {
+        if isAllSelected(of: allIDs) {
             deselectAll()
         } else {
             selectAll(from: allIDs)

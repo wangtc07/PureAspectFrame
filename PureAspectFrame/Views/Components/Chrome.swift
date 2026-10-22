@@ -10,6 +10,7 @@ public enum ChromeMetrics {
     public static let edgeHorizontal: CGFloat = 16
     public static let edgeBottom: CGFloat = 12
     public static let groupSpacing: CGFloat = 12
+    public static let materialStrokeWidth: CGFloat = 0.6
 }
 
 public enum ChromeInk {
@@ -35,6 +36,27 @@ public enum ChromeFallbackStroke {
         case .primary: return .primary.opacity(0.14)
         case .white: return .white.opacity(0.16)
         }
+    }
+}
+
+public struct ChromeMorphID: Hashable {
+    let id: String
+    let namespace: Namespace.ID
+
+    public init(_ id: String, in namespace: Namespace.ID) {
+        self.id = id
+        self.namespace = namespace
+    }
+}
+
+struct ChromeMaterialBackground<S: InsettableShape>: ViewModifier {
+    var shape: S
+    var stroke: ChromeFallbackStroke
+
+    func body(content: Content) -> some View {
+        content
+            .background(.ultraThinMaterial, in: shape)
+            .overlay(shape.strokeBorder(stroke.color, lineWidth: ChromeMetrics.materialStrokeWidth))
     }
 }
 
@@ -80,6 +102,7 @@ private struct LiquidGlassCircleModifier: ViewModifier {
     var size: CGFloat
     var ink: ChromeInk?
     var fallbackStroke: ChromeFallbackStroke
+    var morphID: ChromeMorphID?
 
     func body(content: Content) -> some View {
         let framed = content
@@ -89,10 +112,9 @@ private struct LiquidGlassCircleModifier: ViewModifier {
             framed
                 .contentShape(Circle())
                 .glassEffect(.regular.interactive(), in: .circle)
+                .chromeGlassID(morphID)
         } else {
-            framed
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay(Circle().strokeBorder(fallbackStroke.color, lineWidth: 0.6))
+            framed.modifier(ChromeMaterialBackground(shape: Circle(), stroke: fallbackStroke))
         }
     }
 }
@@ -103,6 +125,7 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     var ink: ChromeInk?
     var interactive: Bool
     var fallbackStroke: ChromeFallbackStroke
+    var morphID: ChromeMorphID?
 
     func body(content: Content) -> some View {
         let framed = content
@@ -114,13 +137,14 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
                 framed
                     .contentShape(Capsule())
                     .glassEffect(.regular.interactive(), in: .capsule)
+                    .chromeGlassID(morphID)
             } else {
-                framed.glassEffect(.regular, in: .capsule)
+                framed
+                    .glassEffect(.regular, in: .capsule)
+                    .chromeGlassID(morphID)
             }
         } else {
-            framed
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay(Capsule().strokeBorder(fallbackStroke.color, lineWidth: 0.6))
+            framed.modifier(ChromeMaterialBackground(shape: Capsule(), stroke: fallbackStroke))
         }
     }
 }
@@ -140,9 +164,24 @@ private struct LiquidGlassRoundedRectModifier: ViewModifier {
                 content.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
             }
         } else {
-            content
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).strokeBorder(fallbackStroke.color, lineWidth: 0.6))
+            content.modifier(
+                ChromeMaterialBackground(
+                    shape: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous),
+                    stroke: fallbackStroke
+                )
+            )
+        }
+    }
+}
+
+@available(iOS 26.0, *)
+private extension View {
+    @ViewBuilder
+    func chromeGlassID(_ morphID: ChromeMorphID?) -> some View {
+        if let morphID {
+            glassEffectID(morphID.id, in: morphID.namespace)
+        } else {
+            self
         }
     }
 }
@@ -151,9 +190,10 @@ public extension View {
     func liquidGlassCircle(
         size: CGFloat = ChromeMetrics.circle,
         ink: ChromeInk? = nil,
-        fallbackStroke: ChromeFallbackStroke = .primary
+        fallbackStroke: ChromeFallbackStroke = .primary,
+        morphID: ChromeMorphID? = nil
     ) -> some View {
-        modifier(LiquidGlassCircleModifier(size: size, ink: ink, fallbackStroke: fallbackStroke))
+        modifier(LiquidGlassCircleModifier(size: size, ink: ink, fallbackStroke: fallbackStroke, morphID: morphID))
     }
 
     func liquidGlassCapsule(
@@ -161,7 +201,8 @@ public extension View {
         horizontalPadding: CGFloat? = ChromeMetrics.capsuleHPadding,
         ink: ChromeInk? = nil,
         interactive: Bool = true,
-        fallbackStroke: ChromeFallbackStroke = .primary
+        fallbackStroke: ChromeFallbackStroke = .primary,
+        morphID: ChromeMorphID? = nil
     ) -> some View {
         modifier(
             LiquidGlassCapsuleModifier(
@@ -169,7 +210,8 @@ public extension View {
                 horizontalPadding: horizontalPadding,
                 ink: ink,
                 interactive: interactive,
-                fallbackStroke: fallbackStroke
+                fallbackStroke: fallbackStroke,
+                morphID: morphID
             )
         )
     }
@@ -186,6 +228,46 @@ public extension View {
                 fallbackStroke: fallbackStroke
             )
         )
+    }
+}
+
+public struct ChromeGlassGroup<Content: View>: View {
+    private let spacing: CGFloat
+    private let morphToken: Bool?
+    private let animation: Animation?
+    private let content: Content
+
+    public init(
+        spacing: CGFloat = ChromeMetrics.groupSpacing,
+        morphToken: Bool? = nil,
+        animation: Animation? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.spacing = spacing
+        self.morphToken = morphToken
+        self.animation = animation
+        self.content = content()
+    }
+
+    public var body: some View {
+        if #available(iOS 26.0, *) {
+            glass
+        } else {
+            content.transaction { $0.disablesAnimations = true }
+        }
+    }
+
+    @available(iOS 26.0, *)
+    @ViewBuilder
+    private var glass: some View {
+        let grouped = GlassEffectContainer(spacing: spacing) {
+            content
+        }
+        if let morphToken, let animation {
+            grouped.animation(animation, value: morphToken)
+        } else {
+            grouped
+        }
     }
 }
 
