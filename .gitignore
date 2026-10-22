@@ -49,7 +49,6 @@ fastlane/test_output
 
 # Code injection
 iOSInjectionProject/
-docs/ref/
 
 # Test data / fixtures
 TestData/
