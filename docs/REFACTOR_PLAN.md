@@ -896,14 +896,14 @@ flowchart TD
 
 先刪死碼、先把持久化鍵與顯示字串脫鉤，後面的改名才安全。
 
-- [ ] **Z1** 刪除死碼：`ChromeCapsuleButton`、`PaddingEdgeIcon`（`Chrome.swift`）與 `UIWorkflowTests.testPaddingEdgeIconInitialization`、整個 `LiquidGlassModifier.swift`、`StoragePolicy.description` 與 `ExifAndStorageTests` 對應兩行、`FooterTabView.currentAlignmentDescription`、`CanvasRatio.aspectRatio`（無參數）、`CanvasRatio.isPolaroid`、`ManualLens.isFavorite` 的 UI 依賴（欄位留到 X5 隨 schema 處理）。— 驗收：`rg` 對上述符號零命中，`xcodebuild test` 綠。
-- [ ] **Z2** 保留 `#available(iOS 26.0, *)` 的材質退路（§16.11）。iOS 26 及以上走 Liquid Glass；iPadOS 17 到 25 走系統材質，操作與層級相同。`IPHONEOS_DEPLOYMENT_TARGET` 改為 17.0，macOS 維持 26.0。else 只換材質。— 驗收：iPadOS 17 模擬器可建置；iOS 26 模擬器的玻璃控制是 `glassEffect`；else 分支裡沒有另一套分頁或底部工具列。
-- [ ] **Z3** 刪除 13 個只被測試讀取的 `static` 規格常數及其斷言（`HomeView.topTrailingButtonOrder/selectionUsesSystemPhotosStyle/selectionBadgeAlignment/selectionShowsUnselectedCircle/importButtonsShowIconOnly/importButtonsAreRightAlignedVerticalStack`、`FooterTabView.usesSecondRowFontSizeSlider/spacerShowsIconOnly/activeItemShowsCloseButton/combinesActiveAndInactiveInSingleSection`、`SNSPreviewView.usesLeadingCloseButton/actionIconNames`、`SNSTargetPlatform.supportsPinchToMerge`）。— 驗收：Views 內每個 `public static let` 都至少被 `body` 引用一次（`rg` 檢查）。
+- [x] **Z1** 刪除死碼：`ChromeCapsuleButton`、`PaddingEdgeIcon`（`Chrome.swift`）與 `UIWorkflowTests.testPaddingEdgeIconInitialization`、整個 `LiquidGlassModifier.swift`、`StoragePolicy.description` 與 `ExifAndStorageTests` 對應兩行、`FooterTabView.currentAlignmentDescription`、`CanvasRatio.aspectRatio`（無參數）、`CanvasRatio.isPolaroid`、`ManualLens.isFavorite` 的 UI 依賴（欄位留到 X5 隨 schema 處理）。— 驗收：`rg` 對上述符號零命中，`xcodebuild test` 綠。
+- [x] **Z2** 保留 `#available(iOS 26.0, *)` 的材質退路（§16.11）。iOS 26 及以上走 Liquid Glass；iPadOS 17 到 25 走系統材質，操作與層級相同。`IPHONEOS_DEPLOYMENT_TARGET` 改為 17.0，macOS 維持 26.0。else 只換材質。— 驗收：iPadOS 17 模擬器可建置；iOS 26 模擬器的玻璃控制是 `glassEffect`；else 分支裡沒有另一套分頁或底部工具列。
+- [x] **Z3** 刪除 13 個只被測試讀取的 `static` 規格常數及其斷言（`HomeView.topTrailingButtonOrder/selectionUsesSystemPhotosStyle/selectionBadgeAlignment/selectionShowsUnselectedCircle/importButtonsShowIconOnly/importButtonsAreRightAlignedVerticalStack`、`FooterTabView.usesSecondRowFontSizeSlider/spacerShowsIconOnly/activeItemShowsCloseButton/combinesActiveAndInactiveInSingleSection`、`SNSPreviewView.usesLeadingCloseButton/actionIconNames`、`SNSTargetPlatform.supportsPinchToMerge`）。— 驗收：Views 內每個 `public static let` 都至少被 `body` 引用一次（`rg` 檢查）。
 - [ ] **Z4** 〔併入 E23〕 持久化鍵脫鉤：`CanvasRatio`、`InternalCropRatio`、`FooterItemType`、`PaddingEdge`、`MeasurementUnit`、`StoragePolicy` 改為 ASCII 穩定 code，自訂 `init(from:)` 接受舊中文 rawValue；`FrameTemplate.canvasRatio`／`ArtworkRecord.storagePolicy`／`@AppStorage("default_storage_policy")` 讀取舊值不失敗；顯示一律走 `displayName`（K13）。— 驗收：單元測試以 v1 JSON 樣本（含「4:5 (IG)」「品牌標誌」「上」「保留輸出圖片」「自由」）解碼成功且 round-trip 相等。
 
 > 註解：N23｜**衝突**：「統一命名」（A）要改的字串，正是 SwiftData 與模板 JSON 的持久化鍵（K13）。**建議**：本階段一次把鍵改成 ASCII 並保留舊值解碼，之後改名只動 String Catalog。**決策問題**：可以接受在第一次啟動新版時，對既有作品／模板做一次不可逆的鍵值遷移嗎？（不接受的話，只能凍結中文 rawValue 當鍵，改名時另立 `displayName`。）
 
-- [ ] **Z5** 新增 XCUITest target `PureAspectFrameUITests`，以既有 `-UITestScreen-*` 啟動參數開畫面；第一個測試：冷啟動 Home 出現 `home_settings_button`（K18）。— 驗收：`xcodebuild test -only-testing:PureAspectFrameUITests` 在 iPhone 17 模擬器綠。
+- [x] **Z5** 新增 XCUITest target `PureAspectFrameUITests`，以既有 `-UITestScreen-*` 啟動參數開畫面；第一個測試：冷啟動 Home 出現 `home_settings_button`（K18）。— 驗收：`xcodebuild test -only-testing:PureAspectFrameUITests` 在 iPhone 17 模擬器綠。
 
 ### Phase L：文件模型與單一排版引擎（12 項）
 
