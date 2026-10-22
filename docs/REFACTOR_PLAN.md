@@ -1,9 +1,9 @@
 # PureAspectFrame UI 全面重構計畫
 
-> 範圍：整個 App 的 UI 與其背後的排版／輸出／資料模型。輸入有四：A＝/how 盤點建議、B＝使用者已拍板決定、C＝使用者 9 項追加需求、D＝2026-10-21 確認的圖層編輯器（§16）。
+> 範圍：整個 App 的 UI 與其背後的排版／輸出／資料模型。輸入有五：A＝/how 盤點建議、B＝使用者已拍板決定、C＝使用者 9 項追加需求、D＝2026-10-21 確認的圖層編輯器（§16）、E＝2026-10-22 確認的編輯底部層級與視覺（§16.10、§16.11）。
 > 本文件只規劃，不改碼。所有「註解」以 `> 註解：` 開頭，格式固定為「衝突／建議／決策問題」。
 > 產生方式：兩輪 /architect。第一輪交叉評審後以候選 1 為底（§7）。第二輪編輯器以較完整的圖層契約為底，嫁接底色、簽名、單一畫布驅動者與 X 的 9:19（§16.2）。
-> 使用方式：編輯器、文件、排版以 §16 為準。§10 標〔取消〕的不要做，標〔併入〕的不要另開實作。首頁與檢視器仍可從 Phase Q 開始。§14 裡 Q1、Q2、Q4 已由 §16 關閉；Q5、Q6、Q7 不阻塞 Phase E。
+> 使用方式：編輯器、文件、排版以 §16 為準。底部怎麼點以 §16.10 為準，視覺與 iPadOS 17 以 §16.11 為準。§10 標〔取消〕的不要做，標〔併入〕的不要另開實作。首頁與檢視器仍可從 Phase Q 開始。§14 裡 Q1、Q2、Q4 已由 §16 關閉；Q5、Q6、Q7 不阻塞 Phase E。
 
 ---
 
@@ -15,7 +15,7 @@
 4. **一個工作階段**：`@Observable EditSession` 擁有文件、來源相片（漸進式載入，EXIF 晚到也會更新）、存檔基準（取消／完成判斷），並提供 `export(format)` 與冪等 `save(in:)`；編輯器、快速套用、重新開啟作品都只是建立不同的 session。
 5. **一條路由**：根層 `AppRouter` 管理所有呈現（快速套用 sheet ↔ 編輯器 cover 互換、檢視器 push），作品格線點擊 → Photos 式檢視器（zoom 轉場）→ 編輯。
 
-> 上列 1–4 是第一輪形狀。圖層編輯器改為：文件只存圖層（外加底色、簽名、鏡頭覆寫）、裁切在每張相片上、勾勾才推一步還原、離開不存檔。契約在 §16，不要照本節去建 `PaddingSpec` 或四個常駐分頁。
+> 上列 1–4 是第一輪形狀。圖層編輯器改為：文件只存圖層（外加底色、簽名、鏡頭覆寫）、裁切在每張相片上、工具層的勾勾才推一步還原、離開不存檔。底部層級在 §16.10。契約在 §16，不要照本節去建 `PaddingSpec` 或四個常駐分頁，也不要把照片、邊框、資訊、切割同時排在底部。
 
 ---
 
@@ -33,7 +33,7 @@
 | K6 | grounding：「Export is always 1080 wide」 | 更糟：切割輸出的 1080 是**整張畫布寬**，3 等分後每片只有約 360px（`renderSlices` → `render(baseWidth: 1080)` → `cropping`）。 | X1 改為「每片 1080」。 |
 | K7 | wbg.py `border_px = int(round(target_size * border_ratio / 2))` | `border_ratio` 是**上下（或左右）兩邊合計**佔長邊的比例（預設 0.16 ＝ 每邊 240/3000 = 8%）。App 目前的 % 是「單邊」值（預設 20、上限 40）。另外 `border_equal` + 固定比例分支呼叫 `compute_canvas_size(orig_w, orig_h, aspect_mode, aspect_ratio)` **少了 `target_size` 參數，會 TypeError**。 | 參考演算法只能取「長邊為基準」的概念，不能照抄係數；見 N3。 |
 | K8 | wbg.py 的「等寬白邊」 | `border_equal` + `auto` 模式是**讓畫布長大**（畫布 = 相片 + 2×邊），畫布比例 ≠ 相片比例；這與 C3「比例絕對優先於留白」相反。 | 見 N4。 |
-| K9 | BACKLOG：「舊系統自動降級為一般毛玻璃材質」 | 專案 `IPHONEOS_DEPLOYMENT_TARGET = 26.0`、`MACOSX_DEPLOYMENT_TARGET = 26.0`，所有 `if #available(iOS 26.0, *) … else …` 的 else 分支都是**死碼**。 | Z2 刪除。 |
+| K9 | BACKLOG：「舊系統自動降級為一般毛玻璃材質」 | 專案 `IPHONEOS_DEPLOYMENT_TARGET = 26.0`、`MACOSX_DEPLOYMENT_TARGET = 26.0`，所有 `if #available(iOS 26.0, *) … else …` 的 else 分支在目標仍是 26 時都是**死碼**。 | §16.11 改為保留退路：iOS 26 用 Liquid Glass，iPadOS 17 用系統材質。Z2 不再刪除。 |
 | K10 | （未提及）macOS | `SUPPORTED_PLATFORMS` 含 `macosx`，但 `ImageRendererService.drawFooter` 整段包在 `#if canImport(UIKit)`：**macOS 輸出沒有底欄**。 | L8 以 CoreText 繪製，跨平台一致。 |
 | K11 | （未提及）並行 | App target 設定 `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`：`ImageRendererService.render` 實際在主執行緒跑；`SNSPreviewView` 的 sheet builder 內同步渲染。 | 新的純型別一律標 `nonisolated`，原圖輸出才能離開主執行緒（X2）。 |
 | K12 | grounding 列的死碼 | 正確，另外補：`CanvasRatio.aspectRatio`（無參數版）、`CanvasRatio.isPolaroid`、`ManualLens.isFavorite`、`ArtworkRecord.bookmarkData`／`exifJSON`（從未寫入）、空資料夾 `PureAspectFrame/ViewModels/`、13 個只被測試讀取的 `static` 規格常數（`HomeView` 6 個、`FooterTabView` 4 個、`SNSPreviewView.usesLeadingCloseButton`／`actionIconNames`、`SNSTargetPlatform.supportsPinchToMerge`）。 | Z1、Z3。 |
@@ -685,7 +685,8 @@ struct ShareFormatMenu<Label: View>: View {
     var body: some View { fatalError("not implemented") }
 }
 
-/// 全 App 唯一的關閉／確認工具列：✕ = 不保存離開；✓ = 確認並離開
+/// 編輯器以外的關閉／確認工具列：✕ = 不保存離開；✓ = 確認並離開。
+/// 編輯器底部的 ✕／✓ 是 §16.10，不使用這個元件。
 struct DismissToolbar: ToolbarContent {
     enum Leading { case none, cancel(confirmDiscard: Bool, action: () -> Void), close(() -> Void) }
     enum Trailing { case none, done(() -> Void), save(enabled: Bool, () -> Void) }
@@ -749,17 +750,19 @@ flowchart TD
 
 與現況差異：格線點擊有目的地（檢視器）；編輯器關閉一律回來源（不再回快速套用）；所有分享經過同一個格式選單；長按只有三項；設定與編輯器共用同一份鏡頭表單。
 
+上圖裡編輯器的「✓ 完成／✕ 取消」是第一輪。圖層編輯器的離開在漢堡，不存做到一半的稿；底部的 ✕／✓ 是 §16.10 的套用與取消，不是完成並離開。
+
 ---
 
 ## 6. 全域一致性規範（U 階段落實，之後所有新畫面照用）
 
 ### 6.1 關閉／確認鈕規則
 
-規則：**✕ ＝ 不保存離開**（有未存變更時先確認「放棄變更」）；**✓ ＝ 確認並離開**；**即時套用的面板只有 ✓**；push 進來的畫面用系統返回鈕。一律走 `DismissToolbar`，禁止文字版「完成／關閉／取消」按鈕（alert／confirmationDialog 的取消除外）。
+規則：**✕ ＝ 不保存離開**（有未存變更時先確認「放棄變更」）；**✓ ＝ 確認並離開**；**即時套用的面板只有 ✓**；push 進來的畫面用系統返回鈕。一律走 `DismissToolbar`，禁止文字版「完成／關閉／取消」按鈕（alert／confirmationDialog 的取消除外）。編輯器底部的 ✕／✓ 不走這條，語意見 §16.10；離開編輯器用漢堡裡的「離開」。
 
 | 畫面 | 左上 | 右上 | 現況 |
 |---|---|---|---|
-| 編輯器 | ✕ 取消（髒→確認） | ✓ 完成 | 只有 ✕，直接丟棄 |
+| 編輯器 | 漢堡「離開」（有未提交草稿 → 確認放棄） | 圖層 | 底部 ✕／✓ 見 §16.10，右上沒有完成 |
 | 快速套用 | ✕ 關閉 | — | ✕ 標「取消」 |
 | 發佈預覽 | ✕ 關閉 | — | ✕ 標「取消」 |
 | 模板 | — | ✓ 完成 | 文字「完成」 |
@@ -791,7 +794,7 @@ flowchart TD
 
 ### 6.3 元件規範
 
-- **分段控制**：數值選擇一律系統 `Picker(.segmented)`（%/px、直／橫〔僅圖示〕、HSB/RGB、發佈平台）；編輯器分頁保留為唯一的 `EditorTabBar`。刪除自製直式／橫式與 HSB/RGB 切換列。
+- **分段控制**：數值選擇一律系統 `Picker(.segmented)`（%/px、直／橫〔僅圖示〕、HSB/RGB、發佈平台）。編輯器底部不是 `EditorTabBar`，層級見 §16.10。刪除自製直式／橫式與 HSB/RGB 切換列。
 - **選取晶片**：單一 `SelectableChipStyle`（選中：accent 填色＋白字；未選：primary 6%）。背景模式、底欄文字色改用同一款（現為 primary 15% 另一套）。
 - **數值顯示**：可調整的數值一律 `EditableNumberBadge`（留白、圓角、模糊、字級、間隙、切割張數）；唯讀資訊用純文字。
 - **尺寸**：圓形鈕一律 `ChromeMetrics.circle = 44`（首頁 48／50 改 44）、圖示 17pt、卡片圓角 16（底欄 14 改 16）、編輯面板固定高度 `EditorPanelMetrics.height`（取 320，內容可捲動；不再 295／385 跳動）。
@@ -826,7 +829,7 @@ flowchart TD
 
 **拒絕自候選 2：** 作品重開後「每次導出新增一列」（改以 session id upsert，同 Photos 編輯同一張）；仿社群間距與切片縫合併的反面（保留為 N22 選項）；底欄用系統 `.draggable`（需長按，不符 C6 的「即時」，見 N15）；`FooterStrip` 經 `ImageRenderer` 光柵化（綁 MainActor、輸出解析度受限）。
 
-**收斂：** 兩者都主張單一排版函式、`@Observable EditSession`、`ExportFormat` 兩值、分享完成才入庫、wbg 的 `/2` 不照抄。當時還收斂在「不做 undo」與「px 必須擇一基準」；這兩點已被 §16 覆寫：每次勾勾一步還原，介面沒有 px。
+**收斂：** 兩者都主張單一排版函式、`@Observable EditSession`、`ExportFormat` 兩值、分享完成才入庫、wbg 的 `/2` 不照抄。當時還收斂在「不做 undo」與「px 必須擇一基準」；這兩點已被 §16 覆寫：每次工具層勾勾一步還原（選項層的勾勾不算，§16.10），介面沒有 px。
 
 ### 7.1 第二輪（圖層編輯器）
 
@@ -879,22 +882,22 @@ flowchart TD
 
 只動 `HomeView`，不讀 `FrameScene`，先讓使用者看到首頁變乾淨。
 
-- [ ] **Q1** 卡片純圖化（C1-1）：移除外框、背景、圓角、「已存圖／僅設定」標籤、相機與日期文字；3 欄（iPad 自適應）正方格、間距 2pt、`scaledToFit`；首頁背景改 `systemGroupedBackground`。— 驗收：UI test：卡片內不存在文字元素；截圖比對。
+- [x] **Q1** 卡片純圖化（C1-1）：移除外框、背景、圓角、「已存圖／僅設定」標籤、相機與日期文字；3 欄（iPad 自適應）正方格、間距 2pt、`scaledToFit`；首頁背景改 `systemGroupedBackground`。— 驗收：UI test：卡片內不存在文字元素；截圖比對。
 
 > 註解：N8｜**衝突**：C1「純圖化、移除背景」＋Photos 基準（正方形裁切縮圖）與本 App 的作品本質衝突：Photos 式正方形裁切會切掉作品的白框（作品最重要的部分）；而不裁切又無背景時，白框作品在白色頁面上會「融化」看不出邊界。**建議**：正方格內 `scaledToFit` 顯示完整作品（同 Photos「長寬比格線」選項），頁面背景用 `systemGroupedBackground`（淺灰 #F2F2F7），白框自然可辨；格子本身無任何裝飾。**決策問題**：接受頁面改淺灰底嗎？或你要 Photos 預設的正方形裁切（看不到完整白框）？
 
-- [ ] **Q2** 點選零延遲無閃爍（C1-2，K20）：選取切換不包 `withAnimation`，勾勾無 `.transition(.scale)`，底部列移除 `.animation(.spring, value: isSelectMode)`；格子不用 interactive glass（`glassEffect(.regular.interactive())` 就是按壓時的 Z 軸浮起）；保留選取觸覺回饋。— 驗收：UI test：點選後同一 runloop 內勾勾元素存在；實機錄影 120fps 無縮放動畫影格。
+- [x] **Q2** 點選零延遲無閃爍（C1-2，K20）：選取切換不包 `withAnimation`，勾勾無 `.transition(.scale)`，底部列移除 `.animation(.spring, value: isSelectMode)`；格子不用 interactive glass（`glassEffect(.regular.interactive())` 就是按壓時的 Z 軸浮起）；保留選取觸覺回饋。— 驗收：UI test：點選後同一 runloop 內勾勾元素存在；實機錄影 120fps 無縮放動畫影格。
 
 > 註解：N26｜**衝突**：C1-2 要「移除全局 spring 動畫與 Z 軸位移」，C1-3 又要選擇膠囊「自然融合」（本身就是動畫）；而「Z 軸位移」在程式碼中其實是卡片的 `.liquidGlass(cornerRadius: 16)` 預設 `interactive: true`（K20）。**建議**：只移除「選取切換」與「卡片按壓」的動畫；模式切換時頂部膠囊的玻璃融合動畫保留。**決策問題**：同意「選取＝無動畫、進出選擇模式＝有融合動畫」的區分嗎？
 
-- [ ] **Q3** 「選擇」膠囊融合（C1-3）：右上兩顆鈕放在同一 `GlassEffectContainer`，以 `glassEffectID` + `@Namespace` 讓「⚙︎ ↔ 全選」「選擇 ↔ ✕」互相變形；固定基準高度 44、最小寬度固定，避免文字長度造成跳動；不寫 iOS 26 以下的退路（部署目標即 26，K9）。— 驗收：實機錄影：進出選擇模式時兩顆玻璃連續變形、無瞬移。
+- [x] **Q3** 「選擇」膠囊融合（C1-3）：右上兩顆鈕放在同一 `GlassEffectContainer`，以 `glassEffectID` + `@Namespace` 讓「⚙︎ ↔ 全選」「選擇 ↔ ✕」互相變形；固定基準高度 44、最小寬度固定，避免文字長度造成跳動。iOS 26 及以上才做玻璃變形；iPadOS 17 兩顆鈕用系統材質、不變形，位置與功能相同（§16.11）。— 驗收：iOS 26 實機錄影：進出選擇模式時兩顆玻璃連續變形、無瞬移。iPadOS 17：兩顆鈕可點，不因缺少 `glassEffect` 而空白。
 
 ### Phase Z：清理與防護網（5 項）
 
 先刪死碼、先把持久化鍵與顯示字串脫鉤，後面的改名才安全。
 
 - [ ] **Z1** 刪除死碼：`ChromeCapsuleButton`、`PaddingEdgeIcon`（`Chrome.swift`）與 `UIWorkflowTests.testPaddingEdgeIconInitialization`、整個 `LiquidGlassModifier.swift`、`StoragePolicy.description` 與 `ExifAndStorageTests` 對應兩行、`FooterTabView.currentAlignmentDescription`、`CanvasRatio.aspectRatio`（無參數）、`CanvasRatio.isPolaroid`、`ManualLens.isFavorite` 的 UI 依賴（欄位留到 X5 隨 schema 處理）。— 驗收：`rg` 對上述符號零命中，`xcodebuild test` 綠。
-- [ ] **Z2** 刪除所有 `#available(iOS 26.0, *)` 的 else 分支（`Chrome.swift` 三個 modifier、`HomeView.bottomActionFloatingBar`、`QuickImportView`）（K9）。— 驗收：`rg "#available\(iOS 26"` 零命中，iOS 與 macOS 皆可建置。
+- [ ] **Z2** 保留 `#available(iOS 26.0, *)` 的材質退路（§16.11）。iOS 26 及以上走 Liquid Glass；iPadOS 17 到 25 走系統材質，操作與層級相同。`IPHONEOS_DEPLOYMENT_TARGET` 改為 17.0，macOS 維持 26.0。else 只換材質。— 驗收：iPadOS 17 模擬器可建置；iOS 26 模擬器的玻璃控制是 `glassEffect`；else 分支裡沒有另一套分頁或底部工具列。
 - [ ] **Z3** 刪除 13 個只被測試讀取的 `static` 規格常數及其斷言（`HomeView.topTrailingButtonOrder/selectionUsesSystemPhotosStyle/selectionBadgeAlignment/selectionShowsUnselectedCircle/importButtonsShowIconOnly/importButtonsAreRightAlignedVerticalStack`、`FooterTabView.usesSecondRowFontSizeSlider/spacerShowsIconOnly/activeItemShowsCloseButton/combinesActiveAndInactiveInSingleSection`、`SNSPreviewView.usesLeadingCloseButton/actionIconNames`、`SNSTargetPlatform.supportsPinchToMerge`）。— 驗收：Views 內每個 `public static let` 都至少被 `body` 引用一次（`rg` 檢查）。
 - [ ] **Z4** 〔併入 E23〕 持久化鍵脫鉤：`CanvasRatio`、`InternalCropRatio`、`FooterItemType`、`PaddingEdge`、`MeasurementUnit`、`StoragePolicy` 改為 ASCII 穩定 code，自訂 `init(from:)` 接受舊中文 rawValue；`FrameTemplate.canvasRatio`／`ArtworkRecord.storagePolicy`／`@AppStorage("default_storage_policy")` 讀取舊值不失敗；顯示一律走 `displayName`（K13）。— 驗收：單元測試以 v1 JSON 樣本（含「4:5 (IG)」「品牌標誌」「上」「保留輸出圖片」「自由」）解碼成功且 round-trip 相等。
 
@@ -954,7 +957,7 @@ flowchart TD
 - [ ] **S4** 〔取消 → E18、E19〕 各分頁改為 `@Bindable var session`；`BorderTabView` 刪除本地 `customH/S/B`、`frostedBlur`；背景改讀寫 `BackgroundSpec`（保留自訂色與模糊值）；HSB 選擇器直接綁 `document.background.customColor`，刪除 `onDisappear` 強制寫入；毛玻璃滑桿即時寫入。— 驗收：UI test：設自訂色 → 切到「底欄」分頁 → 切回 → 自訂色仍在；實機：拖動模糊滑桿時舞台即時變化。
 - [ ] **S5** 〔取消 → 介面沒有 px〕 %／px 切換呼叫 `PaddingSpec.convert(to:designLongEdgePx:)`，圓角同理。— 驗收：單元測試：長邊 1350 上 10% → 135px → 10%。
 - [ ] **S6** 〔併入 E26〕 `FrameTemplate` 新增 `documentJSON`（舊四欄 JSON 為後備解碼）；存模板不含 UI 狀態、包含畫布方向；清單副標改用 `FrameDocument.summary`（修「永遠顯示 % 留白」與 px 模板）。— 驗收：單元測試：舊模板解碼後 `isLinkedActive` 不存在、方向保留；px 模板副標顯示「px」。
-- [ ] **S7** 〔取消 → E17、E18、E20〕 編輯器取消／完成：左上 ✕（`hasUnsavedChanges` 時 confirmationDialog「放棄變更」）、右上 ✓（`session.save` → 關閉）（A：Cancel/Done）。— 驗收：UI test：改比例 → ✕ → 出現「放棄變更」；未改 → ✕ 直接關閉；✓ 後作品數 +1。
+- [ ] **S7** 〔取消 → E17、E18、E20、§16.10〕 編輯器取消／完成：左上 ✕（`hasUnsavedChanges` 時 confirmationDialog「放棄變更」）、右上 ✓（`session.save` → 關閉）（A：Cancel/Done）。不要做右上完成。離開在漢堡；底部 ✓ 是工具層 `commit()`。— 驗收：改由 E18、E17：改過基礎控制後從漢堡離開會確認放棄；底部 `editor_level_commit` 不關閉編輯器、也不增加作品數。
 
 > 註解：N28｜**衝突**：Photos 的編輯畫面只有「取消／完成」，分享在檢視器；本 App 編輯器現在有「導出」，且核心價值是快速發 SNS。**建議**：編輯器保留 `ShareFormatMenu`（右上膠囊內），並新增 ✓ 完成；分享成功即 upsert（X6），因此「分享後按 ✕」不會丟失已分享的版本。**決策問題**：編輯器內要保留分享鈕，還是完全照 Photos 只留取消／完成、分享移到檢視器？
 
@@ -993,7 +996,7 @@ flowchart TD
 - [ ] **D4** 鏡頭覆寫寫入 `document.lensOverride`（只覆寫鏡頭名與焦距，**不覆寫光圈值**）；新增單一 `ManualLensForm`（名稱、焦距、最大光圈、品牌選填），設定與底欄共用。— 驗收：單元測試：f/2.8 拍攝 + 套用 f/1.4 手動鏡頭 → 參數仍顯示 f/2.8；`rg "新增手動鏡頭|新增手動老鏡"` 只剩一處表單。
 - [ ] **D5** 簽名欄位防遮擋（C7-1）：`@FocusState` + 共用 `KeyboardDoneToolbar`（鍵盤上方 ✓ 收回，與 HSB Hex 輸入共用同一元件）；面板以 `ScrollViewReader` 把欄位捲到鍵盤上方；編輯器版面讓出鍵盤安全區。— 驗收：UI test（iPhone SE 模擬器）：點簽名欄位後欄位 frame 完全在鍵盤上方；點 ✓ 鍵盤收回。
 
-> 註解：N18｜**衝突**：C7 的鍵盤 ✓（收鍵盤）與 S7 新增的編輯器右上 ✓（完成並離開）在輸入時同時出現，兩個勾勾意義不同，容易誤按完成。**建議**：鍵盤顯示期間隱藏編輯器右上 ✓（只留鍵盤 ✓），鍵盤收起後恢復。**決策問題**：同意輸入時暫時隱藏「完成」嗎？或鍵盤鈕改用 `keyboard.chevron.compact.down` 圖示以區分？
+> 註解：N18｜**衝突**：C7 的鍵盤 ✓（收鍵盤）與調整層底部的 ✓（確認這一項，§16.10）在輸入時同時出現，兩個勾勾意義不同。編輯器沒有右上「完成」。**建議**：鍵盤顯示期間隱藏調整層底部的 ✓，只留鍵盤 ✓；鍵盤收起後恢復。已寫進 E22。**決策問題**：已採「輸入時暫時隱藏調整層 ✓」。鍵盤鈕維持 ✓，不改成 `keyboard.chevron.compact.down`。
 
 - [ ] **D6** 〔併入 E6、E22〕 圖片水印匯入（C7-2）：簽名欄位右側 `PhotosPicker`（`.images`）；載入後檢查 alpha（`CGImageAlphaInfo` 非 none／noneSkip*），存成 `WatermarkAsset`（PNG、externalStorage）；`document.setWatermark(id, placement: .footer)`。— 驗收：單元測試：含透明的 PNG 判定為有 alpha、JPEG 判定為無；UI test：選取後底欄出現水印項目。
 
@@ -1037,15 +1040,15 @@ flowchart TD
 
 > 註解：N14｜**衝突**：「僅保留設定」的作品要重新開啟，需要原圖；但以 asset id 取原圖必須有相簿讀取授權，而 `PhotosPicker` 的設計正是「不需要授權」（K16）。**建議**：每件作品都存一份長邊 2048 的 HEIC 代理圖（約 0.5MB），重新開啟與 SNS 分享不需要授權；只有「原始尺寸」分享才以 asset id 取原圖，此時才請求授權，拒絕則提示並改用代理圖可達的最大尺寸。設定頁「僅保留設定」的說明據實調整（不再宣稱「節省 98%」）。**決策問題**：接受每件作品多存約 0.5MB 嗎？或你偏好首次啟動就請求相簿權限？
 
-- [ ] **H8** 首頁冗餘文字：移除頂部「N 個項目 · 已用 X MB」膠囊（用量只留在設定）、空狀態教學句「選取相片開始自由裁切…」、「(Leica M11 樣張)」；空狀態保留圖示＋「尚未有任何作品」＋「載入示範相片」一顆。— 驗收：UI test：上述字串不存在。
+- [x] **H8** 首頁冗餘文字：移除頂部「N 個項目 · 已用 X MB」膠囊（用量只留在設定）、空狀態教學句「選取相片開始自由裁切…」、「(Leica M11 樣張)」；空狀態保留圖示＋「尚未有任何作品」＋「載入示範相片」一顆。— 驗收：UI test：上述字串不存在。
 
 > 註解：N31｜**衝突**：「UI 自我說明、不需冗餘文字」與首頁右下兩顆**無標籤**的匯入圖示（⚡ 快速套用、＋ 編輯）——⚡ 的意義無法從圖示推知（grounding：unlabeled real import icons）。**建議**：維持圖示（commit 09bb84b 的決定），但兩顆都加 `accessibilityLabel` 並在長按時顯示系統 `.help`／`contextMenu` 標題；或合併成一顆「＋」，選完相片一律先到快速套用（再一鍵「編輯」）。**決策問題**：保留兩顆圖示鈕，還是合併為一顆？
 
-- [ ] **H9** 首頁選擇模式文案與尺寸統一：「已選取 N 張」、選取鈕與底部圓鈕 44pt、✕ 的 a11y 標「結束選擇」。— 驗收：單元測試 `selectionStatusText(count: 6) == "已選取 6 張"`；UI test：底部圓鈕 frame 44×44。
+- [x] **H9** 首頁選擇模式文案與尺寸統一：「已選取 N 張」、選取鈕與底部圓鈕 44pt、✕ 的 a11y 標「結束選擇」。— 驗收：單元測試 `selectionStatusText(count: 6) == "已選取 6 張"`；UI test：底部圓鈕 frame 44×44。
 
 ### Phase U：全域一致性（9 項）
 
-- [ ] **U1** 新增 `DismissToolbar` 並依 §6.1 套用到所有畫面（編輯器、快速套用、發佈預覽、模板、顏色、鏡頭選擇、鏡頭表單、設定、首頁選擇模式）。— 驗收：`rg 'Button\("(完成|關閉|取消|新增|儲存並套用)"\)'` 在 alert／dialog 之外零命中。
+- [ ] **U1** 新增 `DismissToolbar` 並依 §6.1 套用到快速套用、發佈預覽、模板、顏色、鏡頭選擇、鏡頭表單、設定、首頁選擇模式。編輯器底部的 ✕／✓ 走 §16.10，不使用 `DismissToolbar`，也不是離開。— 驗收：`rg 'Button\("(完成|關閉|取消|新增|儲存並套用)"\)'` 在 alert／dialog 之外零命中；編輯器 `editor_level_commit` 不關閉編輯器。
 - [ ] **U2** 依 §6.2 詞彙表改所有顯示字串（含 a11y label）。— 驗收：`rg "導出|導入|老鏡|積木|已存圖|僅設定|純淨畫布|快速導出|個項目|張相片"` 在 `PureAspectFrame/` 零命中。
 
 > 註解：N27｜**衝突**：現行用語「導出／導入」是中國大陸用語，台灣慣用「匯出／匯入」；使用者的決定中又用了日文「共有」。**建議**：動作一律「分享」（同 iOS 繁中系統用語），流程名「快速套用」，完全不用導出／匯出。**決策問題**：同意以 iOS 繁體中文系統用語為準嗎？
@@ -1107,7 +1110,7 @@ flowchart TD
 | 來源 | 項目 | 任務 |
 |---|---|---|
 | B1 | 拖曳縮放只影響預覽 | **已覆寫**。照片層的捏合／平移是真實裁切，每張相片一份，進輸出（E5、E16、E21） |
-| B2 | 不需要 undo | **已覆寫**。每次工具勾勾一步還原；滑桿每一格不入堆疊（E14） |
+| B2 | 不需要 undo | **已覆寫**。每次工具層勾勾一步還原；選項層勾勾與滑桿每一格都不入堆疊（E14、§16.10） |
 | B3 | 點畫布切標線、點留白收合、雙擊重設 | L10（保持）、P8、S10、N25 |
 | B4 | 長按三項：分享、收藏、刪除 | H4、H5、X5、N9、N11、N13 |
 | B5 | 兩種輸出格式 | L3、X1、X4、N2、N10、N29 |
@@ -1191,6 +1194,7 @@ flowchart TD
 | N29 | 原始尺寸記憶體上限 | Phase L（L3） |
 | N30 | 需求文件標題 10 項 vs 實際 9 項 | §14 Q9 |
 | N31 | 無標籤匯入圖示 | Phase H（H8） |
+| N32 | iPadOS 17 與 iPhone 26 的部署目標 | §16.11 |
 
 > 註解：N25｜**衝突**：B3「點畫布切標線、點留白收合」中的「留白」可指兩處：畫布內的白框留白（目前點它是切標線），或畫布外的舞台空白（目前點它才收合面板）。**建議**：維持現行行為（畫布內任何位置＝切標線、畫布外＝收合）。**決策問題**：你說的「留白」是指畫布外的舞台空白嗎？
 
@@ -1215,6 +1219,7 @@ flowchart TD
 - **Q7（§11 R13）**：切割時要不要另做「每片比例」模式？
 - **Q8（N25）**：點畫布切標線、點舞台空白收合，沿用現況。圖層工具進行中，拖曳優先於這個點擊。
 - **Q9（N30）**：追加需求標題寫 10 項、內文 9 項。後續的圖層編輯器已寫入 §16；它是不是當時漏掉的那一項，不影響階段順序。
+- **Q10（N32）**：iPhone 17–25 要擋下來，還是跟 iPadOS 17 一樣用材質退路可以編輯？不阻塞 Z2 以外的 Phase E。Z2 先讓兩邊都能進編輯器。
 
 既有風險仍在：
 
@@ -1238,11 +1243,11 @@ flowchart TD
 
 只使用 SwiftUI 與 UIKit。預覽與輸出共用一個 `FrameScene` 與一支 `FramePainter`。
 
-本節覆寫 §0 的第 1–4 點、§4 的編輯器模型，以及 §10 裡標成取消或併入的任務。首頁（Q、H）、仍照原文的輸出與一致性任務不在此重寫。
+本節覆寫 §0 的第 1–4 點、§4 的編輯器模型，以及 §10 裡標成取消或併入的任務。首頁（Q、H）、仍照原文的輸出與一致性任務不在此重寫。底部怎麼點以 §16.10 覆寫第 1 點的前半，以及 E18–E22 的面板排法。視覺與 iPadOS 17 在 §16.11。
 
 ### 16.1 已確認的產品規則
 
-1. 底部是工具圖示。進入工具才展開控制。勾勾把這一次進入提交到圖層上；X 只回復進入之後的變更。還原與重做以每一次勾勾為一步，滑桿的每一格不算一步。這覆寫早先的「不做 undo」。
+1. 底部同一時間只在 §16.10 的一層。工具層的 ✓ 把這一次進入提交到圖層上；工具層的 ✕ 只回復進入之後的變更。選項調整裡的 ✓／✕ 只確認或放棄那一項，不推還原。還原與重做以每一次工具層 ✓ 為一步，滑桿的每一格不算一步。這覆寫早先的「不做 undo」。照片、邊框、資訊、切割不要同時排在底部。
 2. 照片層永久存在，不能刪。它擁有圖片比例：原圖、1:1、4:5、3:2、16:9、9:16。也擁有這一張相片在顯示框裡的平移與縮放。裁切是真的，會進輸出，而且每張相片各一份。
 3. 外部畫布比例不在照片層。只有邊框處於「邊框比例」時才設定它。另一個模式是「直接設定邊寬」。例如圖片比例用原圖，邊框的畫布比例用 1:1。
 4. 拖曳邊框層改的是大家共用的內側顯示框（位置與大小），結果寫回百分比。只有照片層接受捏合與平移。
@@ -1253,7 +1258,7 @@ flowchart TD
 9. 切割層至多一個，只有張數與縫。自訂縫是百分比。平台預設不使用這個百分比，改走各平台的顯示規則。切割切的是最終合成圖：相片、全部邊框、全部資訊。
 10. 發佈預覽刪除小紅書。Instagram 縫 0、分頁，寬高比夾在 0.8（4:5）到 1.91；現行程式的 0.75 要改成 0.8。Threads 沿用 App 量到的 6pt 縫與 12pt 圓角，這不是 Meta 官方數字；高於 3:4 的在動態裡被裁。X 的直向最長完整顯示是 9:19（樣本 682×1441）；高於這個比例裁成 9:19。多張是最多 4 格的網格、每格置中裁，不是橫向輪播。超過 4 張時，預覽說明一則貼文放不下，導出仍交出全部分片。
 11. 批次是一個編輯器、多張相片。共用圖片比例、邊框、資訊、切割。每張只有照片層的裁切不同。原圖用各張自己的長寬比；邊框的畫布比例仍逐張套用。底片列在底部工具的上方，不在漢堡選單裡。
-12. 左上漢堡是預覽、導出、模板、離開，旁邊是還原與重做。右上圖層鈕用來重新進入已有的邊框、資訊或切割。離開不存做到一半的稿。全部相片都導出成功，才各寫一筆作品。編輯器沒有「完成並儲存」；工具裡的勾勾是 `commit()`，不是 `save()`。
+12. 左上漢堡是預覽、導出、模板、離開，旁邊是還原與重做。右上圖層鈕用來重新進入已有的照片、邊框、資訊或切割，回到該工具的選項列（§16.10）。離開不存做到一半的稿。全部相片都導出成功，才各寫一筆作品。編輯器沒有「完成並儲存」。底部 ✓ 在工具層才是 `commit()`，不是 `save()`，也不是離開。
 
 ### 16.2 這輪怎麼合成
 
@@ -1393,18 +1398,18 @@ nonisolated struct LayerStack: Codable, Equatable, Sendable {
 
 **工作階段**
 
-- [ ] **E14** `EditSession`：`committed`、`tool`、`history`，以及 `enter`／`edit`／`commit`／`cancel`／`undo`／`redo`。— 驗收：進入邊框工具後拖滑桿 100 次再勾勾，過去堆疊只加 1；按 X 後顯示狀態回到已提交；新增邊框後按 X，圈數不變；勾勾後重做清空；工具進行中不能還原。
+- [ ] **E14** `EditSession`：`committed`、`tool`、`history`，以及 `enter`／`edit`／`commit`／`cancel`／`undo`／`redo`。選項調整另記一份進入記號：該層 ✕ 只回到記號，✓ 留下草稿、不 `commit()`。同一時間只有一份工具草稿。— 驗收：進入邊框工具後在寬度調整拖 100 次再按該層 ✓，過去堆疊不加；回到邊框選項按 ✓ 才加 1。寬度調整按 ✕ 後寬度回到點進之前，同一工具裡其他已確認的項還在。工具層按 ✕ 後顯示狀態回到已提交；新增邊框後按工具層 ✕，圈數不變；工具層 ✓ 後重做清空；停在 A、C、D 不能還原。
 - [ ] **E15** 反解：顯示框拖曳、資訊間距拖曳、捏合與平移。— 驗收：W6；拖曳後寫回再重算，顯示框誤差 ≤ 1px（隨機 200 例）。
 - [ ] **E16** 批次：`PhotoEntry`、一次匯入多張、`scene(for:format:)`。沿用原 S2：快速路徑不要填 demo Leica EXIF；兩個 `PhotosPicker` 各用各的 selection。— 驗收：W8；新相片的 crop 是單位變換；匯入非 Leica 測試圖時，資訊欄不出現「LEICA」，直到真實 EXIF 到達。
 - [ ] **E17** 導出才寫紀錄。全部成功才在同一個交易裡 upsert（每張一筆、id 等於 entry id、共用 `batchID`）。`leave()` 不寫。取消分享不新增。— 驗收：假輸出器讓第二張失敗時，作品數不變；成功時作品數增加張數；同一工作階段再導出，筆數不變。
 
 **編輯器**
 
-- [ ] **E18** `EditorChrome`：左上漢堡（預覽、導出、模板、離開）與還原、重做；右上圖層鈕；底片列在工具區上方；工具面板高度在切換工具時不讓舞台跳動。漢堡的「導出」兩個字不要被詞彙表改掉。— 驗收：選單恰好這四項；工具進行中還原停用；底片列的 frame 在工具列之上。
-- [ ] **E19** 照片工具（六個圖片比例）、邊框工具（邊框比例／直接設定邊寬；直接模式才有等距；邊框比例才有畫布比例與連結；寬度範圍讀 `allowedRange`；顏色、不透明度；底色改 `background`）、切割工具（張數、自訂百分比或平台）。— 驗收：等距時沒有連結控制；切到邊框比例後連結出現；跟隨中的環不能改自己的比例晶片；改驅動圈的顏色時跟隨圈仍是原來的顏色。
-- [ ] **E20** 圖層面板依 `ordered` 列出。點選是重新進入，不新建。邊框可拖曳排序。照片列沒有刪除。漢堡「導出」是唯一分享入口，並刪除 `ArtworkExportHelper`（原 X4）。— 驗收：照片列沒有刪除元素；刪除連結來源後，依賴環仍顯示同一比例且沒有連結標記；`ShareActivityView(` 只出現在分享選單裡。
-- [ ] **E21** 手勢依工具掛上。照片工具寫 crop；邊框工具拖顯示框；資訊工具拖欄邊。變形中的圖層不吃點擊。頂部列維持在舞台之上（原 P8）。雙擊在照片工具重設裁切。點舞台空白仍收合面板。— 驗收：邊框工具裡雙指縮放後 crop 不變；照片工具裡拖曳後環寬不變；放大後仍點得到頂部鈕。
-- [ ] **E22** 資訊工具：兩段位置、間距、三個區塊、磚塊與固定文字、排序、整塊旋轉。鍵盤收回沿用仍照原文的 D5，那個勾勾只收鍵盤。鏡頭與簽名的死路改從這裡進入（原 D3）；水印仍只收有 alpha 的 PNG（原 D6）。鏡頭覆寫不改光圈的規則仍是 D4，不在這一步重做。— 驗收：8 格用完後不能新增；左右欄的對齊標籤是上／中／下；簽名欄位在鍵盤上方。
+- [ ] **E18** `EditorChrome` 的頂部與底片列：左上漢堡（預覽、導出、模板、離開）與還原、重做；右上圖層鈕；底片列在底部導覽上方。漢堡的「導出」兩個字不要被詞彙表改掉。底部四層照 §16.10。C 與 D 同高。同一個工具的選項之間舞台不跳動。— 驗收：選單恰好這四項；停在 A、C、D 時還原停用；底片列的 frame 在底部導覽之上；底部找不到並列的「照片」「邊框」「資訊」「切割」，也找不到文字「勾勾」；導入時 `editor_level_basic` 看得到「比例」「裁切」，以及 ✕、「工具」、✓。
+- [ ] **E19** 基礎控制、邊框、切割都先出選項列，點進去才調整（§16.10）。比例點進去是六個圖片比例；裁切點進去才有捏合、平移、雙擊重設。邊框的選項：邊寬方式（邊框比例／直接設定邊寬）、等距或逐邊（只在直接設定邊寬）、畫布比例與連結（只在邊框比例；等距沒有連結）、寬度（範圍 `allowedRange`）、顏色、不透明度、底色（改 `background`，毛玻璃半徑在底色這一項）。切割的選項：張數、縫（自訂百分比或平台）。選項層的 ✓／✕ 只確認該項。— 驗收：等距時選項列沒有連結；切到邊框比例後連結出現在選項列；跟隨中的環點進畫布比例時不能改比例；改驅動圈的顏色時跟隨圈仍是原來的顏色；邊框選項列上沒有滑桿，點「寬度」才出現滑桿，該層 ✓ 之後滑桿收起、選項列還在。
+- [ ] **E20** 圖層面板依 `ordered` 列出，從右上打開。點選回到該工具的選項列（照片回到基礎控制 A），不新建。邊框可拖曳排序。照片列沒有刪除。若當時有別的草稿，先結束它再進入：有變更就先 `commit()`。漢堡「導出」是唯一分享入口，並刪除 `ArtworkExportHelper`（原 X4）。— 驗收：照片列沒有刪除元素；點已有邊框後是 `editor_level_options` 加上 ✕／✓，圈數不變；刪除連結來源後，依賴環仍顯示同一比例且沒有連結標記；`ShareActivityView(` 只出現在分享選單裡。
+- [ ] **E21** 手勢只掛在 §16.10 的調整層 D，而且只掛對應的那一項：裁切寫這張的 crop，邊框的寬度與逐邊拖顯示框，資訊的間距拖欄邊。A、B、C 不掛這些手勢。變形中的圖層不吃點擊。頂部列維持在舞台之上（原 P8）。雙擊只在裁切調整裡重設。點舞台空白仍收合底部，展開後回到收合前那一層。— 驗收：邊框選項列上雙指縮放後 crop 不變；裁切調整裡拖曳後環寬不變；放大後仍點得到頂部鈕。
+- [ ] **E22** 資訊工具先出選項列：位置、間距、區塊、內容、旋轉、鏡頭、簽名、水印。點進去才調整。位置是兩段（圖片上／外框，再上／下／左／右）。左右欄的對齊是上／中／下。內容裡是磚塊、固定文字與排序；旋轉是整塊轉 90°。鍵盤收回沿用仍照原文的 D5，那個勾勾只收鍵盤；鍵盤顯示時調整層底部的 ✓ 先藏起來。鏡頭與簽名的死路改從這裡進入（原 D3）；水印仍只收有 alpha 的 PNG（原 D6）。鏡頭覆寫不改光圈的規則仍是 D4，不在這一步重做。— 驗收：8 格用完後不能新增；左右欄的對齊標籤是上／中／下；簽名欄位在鍵盤上方；資訊選項列上沒有文字欄，點「簽名」才出現。
 - [ ] **E23** 一刀切：刪除 `EditorTab` 與四個分頁畫面；舊型別搬進 `LegacyV1`（只解碼）；`LegacyV1.migrate(_: Data)`。持久化鍵與顯示字串的脫鉤只留在這裡（原 Z4）。— 驗收：`rg "EditorTab|BorderTabView|FooterTabView|RatioTabView|SplitTabView"` 零命中；v1 樣本解出預期圖層後再編碼，沒有 `paddingTop`、`isLinkedActive`、`gapPx`；`LegacyV1.BorderSettings` 不是 `Encodable`。
 
 **輸出與持久化**
@@ -1416,7 +1421,7 @@ nonisolated struct LayerStack: Codable, Equatable, Sendable {
 **防護與文件**
 
 - [ ] **E27** 擴充 `scripts/check_ui_conventions.sh`。`Models/Legacy/` 以外禁止 `BorderSettings`、`FooterSettings`、`SplitSettings`、`PaddingSpec`、`FooterSpec`、`EditorTab`、`MeasurementUnit`、`redBook`、`小紅書`、`paddingTop`。也禁止 View 自己把拖曳換算成百分比。— 驗收：在任一 View 加 `var b = BorderSettings()` 時腳本以非 0 結束。
-- [ ] **E28** 規格與測試改為圖層模型：`FrameSceneTests`（W1–W9）、`LayerStackTests`、`EditSessionUndoTests`、`SNSDisplaySpecTests`、`LegacyV1Tests`、`FrameDocumentShapeTests`。UI 流程涵蓋新增邊框、勾勾、還原、重做、X、批次導出。— 驗收：`xcodebuild test` 綠；`Models/Document` 與 `Services/Layout` 行覆蓋率 ≥ 90%。
+- [ ] **E28** 規格與測試改為圖層模型：`FrameSceneTests`（W1–W9）、`LayerStackTests`、`EditSessionUndoTests`、`SNSDisplaySpecTests`、`LegacyV1Tests`、`FrameDocumentShapeTests`。UI 流程涵蓋 §16.10：導入基礎控制、工具層 ✓／✕、選項層 ✓／✕、從圖層回到選項列、還原、重做、批次導出。— 驗收：`xcodebuild test` 綠；`Models/Document` 與 `Services/Layout` 行覆蓋率 ≥ 90%。
 
 ### 16.8 這裡接受的代價
 
@@ -1435,3 +1440,58 @@ nonisolated struct LayerStack: Codable, Equatable, Sendable {
 4. Threads 的 6pt／12pt 是 App 實測。X 的 9:19 來自單張樣本 682×1441。Instagram 下緣從 0.75 改成 0.8 後，現有預覽會少裁一點。
 5. 手動鏡頭在文件上，整批共用。同一批裡若是不同鏡頭，覆寫會套到每一張。這與「每張只有裁切不同」一致。
 6. §11 已占用 R1–R18，§4.2.1 的舊算例已改名。新測試只用 W1–W9，不要再使用 E1–E6 當算例編號。
+7. 選項調整的 ✕ 要回到點進該項時的草稿。若只在工具層留一份快照，這個 ✕ 會把同一工具裡其他已確認的項一起清掉。進入 D 時另記一份草稿記號。
+
+### 16.10 編輯器底部層級（2026-10-22 確認）
+
+這一節覆寫 §16.1 第 1 點裡「底部是一排工具、一進工具就展開全部控制」。`ui-refactor-plan-failed` 的 `.audit/v7/editor-stage.png` 就是被覆寫的底部：同一列是 X、照片、邊框、切割、資訊、文字「勾勾」，下面把比例、滑桿、顏色一次攤開。E18 之後不要再做成那樣。
+
+參考圖只規定層級與操作。實心黑底、黃色選中、藍色「新工具」徽章都不是視覺，視覺見 §16.11。圖一側邊寫的「樣式」「匯出」在這裡是 ✕ 與 ✓。圖二中間的「自動調整」「建立遮罩」「圖層」不要做。圖三的「全部／微調／修正／樣式」不要做。
+
+底部同一時間只在下面四層之一。底片列始終在這塊底部的上方。右上圖層鈕不變。
+
+**A. 基礎控制**（照片剛導入，以及從圖層再點照片）
+
+選項列只有「比例」和「裁切」。比例點進去是六個圖片比例。裁切點進去才捏合、平移，雙擊重設。最底一列：左 ✕、中「工具」、右 ✓。識別：`editor_level_basic`、`editor_open_tools`、`editor_level_cancel`、`editor_level_commit`。
+
+**B. 只有工具選項**
+
+選項列只有「邊框」「資訊」「切割」，用來新增圖層。這一層沒有 ✕，也沒有 ✓。識別：`editor_level_tools`。
+
+**C. 工具選項**（點了邊框、資訊或切割之後；從圖層點已有的邊框、資訊或切割也到這裡）
+
+先只顯示這個工具的選項圖示。有哪些選項、哪一項在哪種模式下出現，寫在 E19 與 E22。最底一列：左 ✕、右 ✓，中央是工具名稱，中央不可點。識別：`editor_level_options`。
+
+**D. 選項調整**
+
+點了某一項才到這裡。數值是滑桿，並顯示目前的值；比例、顏色、平台、位置是選項。參考圖的亮度滑桿只是數值類的例子。調整區佔原本選項列的位置。最底一列仍是 ✕ 與 ✓。C 與 D 底部外框同高，放不下就在底部裡捲，舞台不跳。識別：`editor_level_adjust`。
+
+**往返**
+
+1. 編輯器打開時在 A，並 `enter` 照片層。
+2. A 的 ✓：基礎控制與進入前不同才 `commit()` 一步，然後到 B。
+3. A 的 ✕：`cancel()` 基礎控制，然後到 B。照片層還在。
+4. A 的「工具」：到 B。基礎控制有未提交變更時，先照 ✓ 提交再進 B。同一時間只能有一份工具草稿。
+5. B 點邊框、資訊或切割：`enter(.new)`，到 C。
+6. C 的 ✓：與進入前不同才 `commit()` 一步，回到 B。這是套用此工具。
+7. C 的 ✕：`cancel()`，回到 B。這是取消此工具。新加的那一層消失；重新進入的那一層回到進入前。
+8. A 或 C 點一個選項：記住當下草稿，到 D。滑桿拖動用 `edit` 即時畫在舞台上，每一格不進還原。
+9. D 的 ✓：留下這項調整，回到 A 或 C。不 `commit()`。
+10. D 的 ✕：草稿回到點進這項時的記號，回到 A 或 C。同一工具裡其他已經確認過的項保留。
+11. 右上圖層點照片，回到 A；點已有的邊框、資訊或切割，回到那個的 C，不新建。當時若停在別的草稿，先結束那個草稿再進入：有變更就先 `commit()`，與第 4 點同一條規則。
+
+鍵盤出現時只留鍵盤上的 ✓（收鍵盤，D5）。調整層底部的 ✓ 先藏起來。
+
+點舞台空白收合整塊底部，留下上拉把手。展開後回到收合前的那一層。
+
+B 沒有確認列，比 C 矮。進入工具時舞台變矮，回到 B 時變高。同一個工具的選項之間，以及 C 與 D 之間，舞台高度不變。
+
+### 16.11 視覺與 iPadOS 17（2026-10-22 確認）
+
+參考圖不是配色稿。底部的選項圖示與 ✕／✓ 用 Apple 原生 **Liquid Glass**（`glassEffect`），跟系統淺色／深色。選中用玻璃，不用實心黃底。
+
+iOS 26 及以上用 `glassEffect`。需要兩顆控制互相變形時才用 `GlassEffectContainer`（首頁 Q3）。iPadOS 17 沒有這些 API：同一套層級、同一套圖示與 ✕／✓，材質改 `regularMaterial`。退路不另外做一排工具按鈕，也不另做一套分頁。
+
+`IPHONEOS_DEPLOYMENT_TARGET` 改 17.0，否則 iPadOS 17 裝不上。macOS 維持 26.0。Z2 改為保留 availability 判斷。
+
+> 註解：N32｜**衝突**：部署目標降到 17 之後，iPhone 17–25 也能安裝；這次要的是 iOS 26.0+，並希望 iPadOS 17 也能用。**建議**：iPadOS 17–25 用材質退路照常編輯。iPhone 且系統低於 26 時，啟動說明需要 iOS 26，不進編輯器。**決策問題**：iPhone 17–25 要擋下來，還是跟 iPad 一樣用材質退路可以編輯？決定前，Z2 先讓 iPhone 與 iPad 都進得了編輯器，兩邊共用同一套層級。

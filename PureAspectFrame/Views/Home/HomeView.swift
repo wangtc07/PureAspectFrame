@@ -240,79 +240,67 @@ public struct HomeView: View {
     }
 
     private var topModeControls: some View {
-        GlassEffectContainer(spacing: ChromeMetrics.groupSpacing) {
+        let controls = TopControls(
+            isSelectMode: isSelectMode,
+            hasArtworks: !artworks.isEmpty,
+            isAllSelected: selectionState.isAllSelected(of: artworks.map(\.id))
+        )
+        return ChromeGlassGroup(morphToken: isSelectMode, animation: .smooth(duration: 0.35)) {
             HStack(spacing: ChromeMetrics.groupSpacing) {
-                leadingModeControl
-                if isSelectMode || !artworks.isEmpty {
-                    trailingModeControl
+                topControlButton(controls.leading, morphID: TopControls.leadingMorphID)
+                if let trailing = controls.trailing {
+                    topControlButton(trailing, morphID: TopControls.trailingMorphID)
                 }
             }
         }
-        .animation(.smooth(duration: 0.35), value: isSelectMode)
     }
 
     @ViewBuilder
-    private var leadingModeControl: some View {
-        if isSelectMode {
-            let isAllSelected = !artworks.isEmpty && selectionState.selectedIDs.count == artworks.count
-            Button {
-                selectionState.toggleSelectAll(from: artworks.map(\.id))
-            } label: {
-                Text(isAllSelected ? "取消全選" : "全選")
+    private func topControlButton(_ control: TopControl, morphID: String) -> some View {
+        let chromeID = ChromeMorphID(morphID, in: homeChrome)
+        let button = Button {
+            perform(control)
+        } label: {
+            switch control.glyph {
+            case .symbol(let name):
+                Image(systemName: name)
+                    .font(.system(size: ChromeMetrics.iconPointSize, weight: .semibold))
+                    .frame(width: ChromeMetrics.circle, height: ChromeMetrics.circle)
+            case .text(let title):
+                Text(title)
                     .font(.subheadline.bold())
                     .foregroundStyle(.primary)
                     .frame(minWidth: Self.modeControlMinWidth, minHeight: ChromeMetrics.capsuleHeight)
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("home_select_all_button")
-            .glassEffect(.regular.interactive(), in: .capsule)
-            .glassEffectID("home-leading", in: homeChrome)
-        } else {
-            Button {
-                activeSheet = .settings
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: ChromeMetrics.iconPointSize, weight: .semibold))
-                    .frame(width: ChromeMetrics.circle, height: ChromeMetrics.circle)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("設定")
-            .accessibilityIdentifier("home_settings_button")
-            .glassEffect(.regular.interactive(), in: .circle)
-            .glassEffectID("home-leading", in: homeChrome)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(control.accessibilityLabel)
+        .accessibilityIdentifier(control.accessibilityIdentifier)
+
+        switch control.glyph {
+        case .symbol:
+            button
+                .liquidGlassCircle(size: ChromeMetrics.circle, morphID: chromeID)
+                .id(control.accessibilityIdentifier)
+        case .text:
+            button
+                .liquidGlassCapsule(height: nil, horizontalPadding: nil, morphID: chromeID)
+                .id(control.accessibilityIdentifier)
         }
     }
 
-    @ViewBuilder
-    private var trailingModeControl: some View {
-        if isSelectMode {
-            Button {
-                isSelectMode = false
-                selectionState.deselectAll()
-            } label: {
-                Image(systemName: Self.selectionCloseButtonIcon)
-                    .font(.system(size: ChromeMetrics.iconPointSize, weight: .semibold))
-                    .frame(width: ChromeMetrics.circle, height: ChromeMetrics.circle)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("結束選擇")
-            .accessibilityIdentifier("home_select_done_button")
-            .glassEffect(.regular.interactive(), in: .circle)
-            .glassEffectID("home-trailing", in: homeChrome)
-        } else {
-            Button {
-                isSelectMode = true
-                selectionState.deselectAll()
-            } label: {
-                Text("選擇")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.primary)
-                    .frame(minWidth: Self.modeControlMinWidth, minHeight: ChromeMetrics.capsuleHeight)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("home_select_button")
-            .glassEffect(.regular.interactive(), in: .capsule)
-            .glassEffectID("home-trailing", in: homeChrome)
+    private func perform(_ control: TopControl) {
+        switch control {
+        case .settings:
+            activeSheet = .settings
+        case .selectAll:
+            selectionState.toggleSelectAll(from: artworks.map(\.id))
+        case .enterSelection:
+            isSelectMode = true
+            selectionState.deselectAll()
+        case .exitSelection:
+            isSelectMode = false
+            selectionState.deselectAll()
         }
     }
     
@@ -429,21 +417,11 @@ public struct HomeView: View {
     
     // MARK: - 底部浮動液態玻璃操作列
     private var bottomActionFloatingBar: some View {
-        Group {
-            if #available(iOS 26.0, *) {
-                GlassEffectContainer(spacing: ChromeMetrics.groupSpacing) {
-                    if isSelectMode {
-                        selectionBottomButtons
-                    } else {
-                        bottomButtonsContent
-                    }
-                }
+        ChromeGlassGroup {
+            if isSelectMode {
+                selectionBottomButtons
             } else {
-                if isSelectMode {
-                    selectionBottomButtons
-                } else {
-                    bottomButtonsContent
-                }
+                bottomButtonsContent
             }
         }
         .padding(.horizontal, ChromeMetrics.edgeHorizontal)
@@ -534,13 +512,15 @@ public struct HomeView: View {
     }
     
     private func deleteSingleArtwork(_ record: ArtworkRecord) {
-        withAnimation {
+        let libraryIsEmpty = withAnimation {
             selectionState.selectedIDs.remove(record.id)
             modelContext.delete(record)
             try? modelContext.save()
-            if artworks.isEmpty {
-                isSelectMode = false
-            }
+            return artworks.isEmpty
+        }
+        if libraryIsEmpty {
+            // ChromeGlassGroup morphs this flag. withAnimation would also scale the checkmark.
+            isSelectMode = false
         }
     }
     
@@ -560,8 +540,9 @@ public struct HomeView: View {
             }
             try? modelContext.save()
             selectionState.deselectAll()
-            isSelectMode = false
         }
+        // ChromeGlassGroup morphs this flag. withAnimation would also scale the checkmark.
+        isSelectMode = false
     }
     
     private func loadDemoPhoto(quickImport: Bool = false) {
@@ -571,6 +552,80 @@ public struct HomeView: View {
             activeSheet = .quickImport
         } else {
             showingFullEditor = true
+        }
+    }
+}
+
+extension HomeView {
+    enum TopControl: Equatable {
+        case settings
+        case selectAll(isAllSelected: Bool)
+        case enterSelection
+        case exitSelection
+
+        enum Glyph: Equatable {
+            case symbol(String)
+            case text(String)
+        }
+
+        var glyph: Glyph {
+            switch self {
+            case .settings:
+                return .symbol("gearshape")
+            case .selectAll(let isAllSelected):
+                return .text(isAllSelected ? "取消全選" : "全選")
+            case .enterSelection:
+                return .text("選擇")
+            case .exitSelection:
+                return .symbol(HomeView.selectionCloseButtonIcon)
+            }
+        }
+
+        var accessibilityLabel: String {
+            switch self {
+            case .settings:
+                return "設定"
+            case .selectAll(let isAllSelected):
+                return isAllSelected ? "取消全選" : "全選"
+            case .enterSelection:
+                return "選擇"
+            case .exitSelection:
+                return "結束選擇"
+            }
+        }
+
+        var accessibilityIdentifier: String {
+            switch self {
+            case .settings:
+                return "home_settings_button"
+            case .selectAll:
+                return "home_select_all_button"
+            case .enterSelection:
+                return "home_select_button"
+            case .exitSelection:
+                return "home_select_done_button"
+            }
+        }
+    }
+
+    struct TopControls: Equatable {
+        static let leadingMorphID = "home-leading"
+        static let trailingMorphID = "home-trailing"
+
+        let leading: TopControl
+        let trailing: TopControl?
+
+        init(isSelectMode: Bool, hasArtworks: Bool, isAllSelected: Bool) {
+            if isSelectMode {
+                leading = .selectAll(isAllSelected: isAllSelected)
+                trailing = .exitSelection
+            } else if hasArtworks {
+                leading = .settings
+                trailing = .enterSelection
+            } else {
+                leading = .settings
+                trailing = nil
+            }
         }
     }
 }

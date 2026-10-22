@@ -546,6 +546,31 @@ struct UIWorkflowTests {
         // 4. 驗證選取狀態文字格式
         #expect(HomeView.selectionStatusText(count: 0) == "選取項目")
         #expect(HomeView.selectionStatusText(count: 6) == "已選取 6 張")
+
+        let browsing = HomeView.TopControls(isSelectMode: false, hasArtworks: true, isAllSelected: false)
+        #expect(browsing.leading == .settings)
+        #expect(browsing.trailing == .enterSelection)
+
+        let emptyBrowse = HomeView.TopControls(isSelectMode: false, hasArtworks: false, isAllSelected: false)
+        #expect(emptyBrowse.leading == .settings)
+        #expect(emptyBrowse.trailing == nil)
+
+        let selecting = HomeView.TopControls(isSelectMode: true, hasArtworks: true, isAllSelected: true)
+        #expect(selecting.leading == .selectAll(isAllSelected: true))
+        #expect(selecting.trailing == .exitSelection)
+        #expect(selecting.leading.accessibilityIdentifier == "home_select_all_button")
+        #expect(selecting.trailing?.accessibilityLabel == "結束選擇")
+        #expect(selecting.trailing?.accessibilityIdentifier == "home_select_done_button")
+        #expect(browsing.leading.accessibilityIdentifier == "home_settings_button")
+        #expect(browsing.trailing?.accessibilityIdentifier == "home_select_button")
+
+        var selection = ArtworkSelectionState()
+        let ids = [UUID(), UUID()]
+        #expect(!selection.isAllSelected(of: []))
+        selection.selectedIDs = Set(ids)
+        #expect(selection.isAllSelected(of: ids))
+        selection.selectedIDs = [ids[0]]
+        #expect(!selection.isAllSelected(of: ids))
     }
 }
 
