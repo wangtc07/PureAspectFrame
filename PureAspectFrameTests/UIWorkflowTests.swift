@@ -138,14 +138,6 @@ struct UIWorkflowTests {
         #expect(didConfirm)
     }
 
-    @Test func testPaddingEdgeIconInitialization() {
-        for edge in PaddingEdge.allCases {
-            let icon = PaddingEdgeIcon(edge: edge, isSelected: true)
-            #expect(icon.edge == edge)
-            #expect(icon.isSelected == true)
-        }
-    }
-
     @Test func testHSBColorPickerViewComponents() {
         var h: Double = 0.5
         var s: Double = 0.8

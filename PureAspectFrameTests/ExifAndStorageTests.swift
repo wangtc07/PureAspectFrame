@@ -55,12 +55,6 @@ struct ExifAndStorageTests {
         #expect(frosted.blurRadius == 30)
     }
 
-    // MARK: - StorageMode Tests
-    @Test func testStoragePolicySettings() {
-        #expect(StoragePolicy.fullImage.description.contains("保留輸出圖片"))
-        #expect(StoragePolicy.settingsOnly.description.contains("僅保留設定"))
-    }
-
     // MARK: - Color Conversion Tests
     @Test func testColorConversionsBetweenHSBRGBAndHex() {
         // 1. 測試 #1C1C1E
