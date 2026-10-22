@@ -4,10 +4,6 @@ import SwiftData
 /// 【底欄】分頁視圖
 public struct FooterTabView: View {
     /// UI 設計規範常數（供測試驗證與保持一致）
-    public static let usesSecondRowFontSizeSlider: Bool = true
-    public static let spacerShowsIconOnly: Bool = true
-    public static let activeItemShowsCloseButton: Bool = false
-    public static let combinesActiveAndInactiveInSingleSection: Bool = true
     public static let sectionTitle: String = "顯示項目"
     public static let downwardRemovalThresholdPt: CGFloat = 24.0
     

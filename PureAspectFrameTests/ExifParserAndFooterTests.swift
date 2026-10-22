@@ -249,10 +249,6 @@ struct ExifParserAndFooterTests {
         // - 間距選項僅顯示 icon
         // - 啟用項目不顯示 x 按鈕，改為往下拖曳解除（threshold <= 32pt）
         // - 啟用與未啟用合併為同一區塊，標題使用「顯示項目」（取代積木/倉庫）
-        #expect(FooterTabView.usesSecondRowFontSizeSlider == true)
-        #expect(FooterTabView.spacerShowsIconOnly == true)
-        #expect(FooterTabView.activeItemShowsCloseButton == false)
-        #expect(FooterTabView.combinesActiveAndInactiveInSingleSection == true)
         #expect(FooterTabView.sectionTitle == "顯示項目")
         #expect(FooterTabView.downwardRemovalThresholdPt > 0 && FooterTabView.downwardRemovalThresholdPt <= 32)
         

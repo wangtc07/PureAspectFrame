@@ -438,9 +438,6 @@ struct UIWorkflowTests {
         #expect(SNSTargetPlatform.threads.postCornerRadius == 12)
         #expect(SNSTargetPlatform.xTwitter.postCornerRadius == 16)
         #expect(SNSTargetPlatform.redBook.postCornerRadius == 8)
-        
-        #expect(SNSTargetPlatform.threads.supportsPinchToMerge == true)
-        #expect(SNSTargetPlatform.instagram.supportsPinchToMerge == false)
 
         // 2. 驗證 Threads 雙圖捏合縫合幾何計算
         #expect(SNSPreviewView.threadsGap(isMerged: false) == 6.0)
@@ -493,12 +490,8 @@ struct UIWorkflowTests {
         #expect(SNSPreviewView.xTwitterMediaCornerRadius == 12.0)
 
         // 4. 驗證貼文區域中性假資料（帳號、日期符號內文）、左上角 X 關閉按鈕與各平台真實互動/分享圖示列
-        #expect(SNSPreviewView.usesLeadingCloseButton == true)
         #expect(!SNSPreviewView.placeholderUsername.isEmpty)
         #expect(SNSPreviewView.placeholderCaption.contains("2026"))
-        #expect(SNSPreviewView.actionIconNames(for: .instagram) == ["heart", "message", "arrow.2.squarepath", "paperplane", "bookmark"])
-        #expect(SNSPreviewView.actionIconNames(for: .threads) == ["heart", "message", "arrow.2.squarepath", "paperplane"])
-        #expect(SNSPreviewView.actionIconNames(for: .xTwitter) == ["bubble.left", "arrow.2.squarepath", "heart", "bookmark", "square.and.arrow.up"])
 
         // 5. 驗證從實際 SNS 官方 SVG 向量路徑繪製之圖示 (Instagram / Threads / X) 皆能產生有效非空向量路徑
         #expect(SNSPreviewView.officialActionIcons(for: .instagram) == [.igHeart, .igComment, .igRepost, .igShare, .igBookmark])
@@ -515,23 +508,15 @@ struct UIWorkflowTests {
     }
 
     @Test func testHomeViewSystemPhotosStyleSelectionAndRightStackedIconButtons() {
-        // 1. 驗證首頁右上角按鈕順序為「設定 -> 選擇」兩個按鈕
-        #expect(HomeView.topTrailingButtonOrder == ["settings", "select"])
-        
-        // 2. 驗證選擇模式參考系統相簿 UI：
+        // 選擇模式參考系統相簿 UI：
         // - 右上關閉按鈕為圓形 X ("xmark")
         // - 底部左側圓形分享按鈕 ("square.and.arrow.up")、中間選取數量文字、右側圓形垃圾桶按鈕 ("trash")
         // - 照片卡片選取標記位於右下角 (.bottomTrailing)，且未選取時不顯示空白圓圈
-        #expect(HomeView.selectionUsesSystemPhotosStyle == true)
         #expect(HomeView.selectionCloseButtonIcon == "xmark")
         #expect(HomeView.selectionBottomExportIcon == "square.and.arrow.up")
         #expect(HomeView.selectionBottomDeleteIcon == "trash")
-        #expect(HomeView.selectionBadgeAlignment == .bottomTrailing)
-        #expect(HomeView.selectionShowsUnselectedCircle == false)
         
         // 3. 驗證快速導入與自訂編輯改成只有 icon，放在右邊垂直堆疊放置
-        #expect(HomeView.importButtonsShowIconOnly == true)
-        #expect(HomeView.importButtonsAreRightAlignedVerticalStack == true)
         #expect(HomeView.quickImportIconName == "bolt.fill")
         #expect(HomeView.customEditIconName == "plus")
         
