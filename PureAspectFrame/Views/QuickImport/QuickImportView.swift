@@ -96,24 +96,13 @@ public struct QuickImportView: View {
                         .animation(.easeInOut(duration: 0.35), value: activeBackground.stageBackgroundColor)
                 }
                 
-                Group {
-                    if #available(iOS 26.0, *) {
-                        GlassEffectContainer(spacing: 12) {
-                            quickImportBottomButtons(
-                                ratio: activeRatio,
-                                border: activeBorder,
-                                background: activeBackground,
-                                footer: activeFooter
-                            )
-                        }
-                    } else {
-                        quickImportBottomButtons(
-                            ratio: activeRatio,
-                            border: activeBorder,
-                            background: activeBackground,
-                            footer: activeFooter
-                        )
-                    }
+                ChromeGlassGroup(spacing: 12) {
+                    quickImportBottomButtons(
+                        ratio: activeRatio,
+                        border: activeBorder,
+                        background: activeBackground,
+                        footer: activeFooter
+                    )
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)

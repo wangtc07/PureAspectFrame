@@ -4,10 +4,6 @@ import SwiftData
 /// 【底欄】分頁視圖
 public struct FooterTabView: View {
     /// UI 設計規範常數（供測試驗證與保持一致）
-    public static let usesSecondRowFontSizeSlider: Bool = true
-    public static let spacerShowsIconOnly: Bool = true
-    public static let activeItemShowsCloseButton: Bool = false
-    public static let combinesActiveAndInactiveInSingleSection: Bool = true
     public static let sectionTitle: String = "顯示項目"
     public static let downwardRemovalThresholdPt: CGFloat = 24.0
     
@@ -362,32 +358,6 @@ public struct FooterTabView: View {
             )
         }
         .buttonStyle(.plain)
-    }
-    
-    // MARK: - 當前排版狀態文字說明
-    private var currentAlignmentDescription: String {
-        let spacers = footerSettings.activeItems.filter { $0 == .spacer }.count
-        if spacers == 0 {
-            return "排版：全部置中（無放置間距）"
-        } else if spacers == 1 {
-            let spacerIdx = footerSettings.activeItems.firstIndex(of: .spacer) ?? 0
-            if spacerIdx == 0 {
-                return "排版：全部靠右"
-            } else if spacerIdx == footerSettings.activeItems.count - 1 {
-                return "排版：全部靠左"
-            } else {
-                return "排版：左右分欄（靠左 ⟷ 靠右）"
-            }
-        } else {
-            let indices = footerSettings.activeItems.enumerated().compactMap { $0.element == .spacer ? $0.offset : nil }
-            if indices.contains(footerSettings.activeItems.count - 1) {
-                return "排版：置左 ＋ 置中"
-            } else if indices.contains(0) {
-                return "排版：置中 ＋ 靠右"
-            } else {
-                return "排版：三段分欄（靠左 ⟷ 置中 ⟷ 靠右）"
-            }
-        }
     }
     
     // MARK: - 未啟用項目徽章（無資訊時呈現禁選外觀，間距僅顯示 icon）

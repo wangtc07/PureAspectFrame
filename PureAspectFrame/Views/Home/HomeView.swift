@@ -6,15 +6,9 @@ import Photos
 /// 主頁視圖（遵循 ChekiLens 與 iOS 26 原生 Liquid Glass 設計語言）
 public struct HomeView: View {
     /// UI 設計規範常數（對齊 iOS 系統相簿選擇介面與右側垂直堆疊圖示按鈕）
-    public static let topTrailingButtonOrder: [String] = ["settings", "select"]
-    public static let selectionUsesSystemPhotosStyle: Bool = true
     public static let selectionCloseButtonIcon: String = "xmark"
     public static let selectionBottomExportIcon: String = "square.and.arrow.up"
     public static let selectionBottomDeleteIcon: String = "trash"
-    public static let selectionBadgeAlignment: Alignment = .bottomTrailing
-    public static let selectionShowsUnselectedCircle: Bool = false
-    public static let importButtonsShowIconOnly: Bool = true
-    public static let importButtonsAreRightAlignedVerticalStack: Bool = true
     public static let quickImportIconName: String = "bolt.fill"
     public static let customEditIconName: String = "plus"
     

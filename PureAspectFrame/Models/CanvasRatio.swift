@@ -68,40 +68,6 @@ public enum CanvasRatio: String, CaseIterable, Identifiable, Codable, Sendable {
         }
     }
     
-    /// 各列舉項原生固有寬除以高之寬高比
-    public var aspectRatio: CGFloat {
-        switch self {
-        case .original:
-            return 1.0
-        case .ig4x5:
-            return 4.0 / 5.0
-        case .square1x1:
-            return 1.0
-        case .xhs3x4:
-            return 3.0 / 4.0
-        case .story9x16:
-            return 9.0 / 16.0
-        case .landscape16x9:
-            return 16.0 / 9.0
-        case .polaroidMini:
-            return 54.0 / 86.0
-        case .polaroidSquare:
-            return 72.0 / 86.0
-        case .polaroidWide:
-            return 108.0 / 86.0
-        }
-    }
-    
-    /// 是否為拍立得規格
-    public var isPolaroid: Bool {
-        switch self {
-        case .polaroidMini, .polaroidSquare, .polaroidWide:
-            return true
-        default:
-            return false
-        }
-    }
-    
     /// 計算給定基準寬度下的畫布像素尺寸（支援橫直式與原圖比例）
     public func targetPixelSize(
         baseWidth: CGFloat = 1080,

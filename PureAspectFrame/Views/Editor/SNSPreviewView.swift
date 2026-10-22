@@ -17,10 +17,6 @@ public enum SNSTargetPlatform: String, CaseIterable, Identifiable {
         case .redBook: return 8
         }
     }
-    
-    public var supportsPinchToMerge: Bool {
-        self == .threads
-    }
 }
 
 /// 官方 SNS 向量圖示列舉（直接採用 Instagram、Threads、X 官方 24x24 SVG 向量座標與路徑）
@@ -481,23 +477,9 @@ public struct SNSPreviewView: View {
     @Environment(\.dismiss) private var dismiss
     
     // MARK: - 中性假資料常數與互動圖示規格
-    public static let usesLeadingCloseButton: Bool = true
     public static let placeholderUsername: String = "username"
     public static let placeholderHandle: String = "@user_id"
     public static let placeholderCaption: String = "2026.10.20  📷 ✨"
-    
-    public static func actionIconNames(for platform: SNSTargetPlatform) -> [String] {
-        switch platform {
-        case .instagram:
-            return ["heart", "message", "arrow.2.squarepath", "paperplane", "bookmark"]
-        case .threads:
-            return ["heart", "message", "arrow.2.squarepath", "paperplane"]
-        case .xTwitter:
-            return ["bubble.left", "arrow.2.squarepath", "heart", "bookmark", "square.and.arrow.up"]
-        case .redBook:
-            return ["heart", "star", "bubble.right", "square.and.arrow.up"]
-        }
-    }
     
     /// 各平台實際官方 SVG 向量圖示列
     public static func officialActionIcons(for platform: SNSTargetPlatform) -> [SNSOfficialIcon] {

@@ -8,16 +8,16 @@ struct ModelTests {
     @Test func testCanvasRatioCalculations() {
         let eps: CGFloat = 0.0001
         // Standard SNS ratios
-        #expect(abs(CanvasRatio.ig4x5.aspectRatio - (4.0 / 5.0)) < eps)
-        #expect(abs(CanvasRatio.square1x1.aspectRatio - 1.0) < eps)
-        #expect(abs(CanvasRatio.xhs3x4.aspectRatio - (3.0 / 4.0)) < eps)
-        #expect(abs(CanvasRatio.story9x16.aspectRatio - (9.0 / 16.0)) < eps)
-        #expect(abs(CanvasRatio.landscape16x9.aspectRatio - (16.0 / 9.0)) < eps)
+        #expect(abs(CanvasRatio.ig4x5.aspectRatio(isLandscape: false) - (4.0 / 5.0)) < eps)
+        #expect(abs(CanvasRatio.square1x1.aspectRatio(isLandscape: false) - 1.0) < eps)
+        #expect(abs(CanvasRatio.xhs3x4.aspectRatio(isLandscape: false) - (3.0 / 4.0)) < eps)
+        #expect(abs(CanvasRatio.story9x16.aspectRatio(isLandscape: false) - (9.0 / 16.0)) < eps)
+        #expect(abs(CanvasRatio.landscape16x9.aspectRatio(isLandscape: true) - (16.0 / 9.0)) < eps)
         
         // Polaroid physical dimensions
-        #expect(abs(CanvasRatio.polaroidMini.aspectRatio - (54.0 / 86.0)) < eps)
-        #expect(abs(CanvasRatio.polaroidSquare.aspectRatio - (72.0 / 86.0)) < eps)
-        #expect(abs(CanvasRatio.polaroidWide.aspectRatio - (108.0 / 86.0)) < eps)
+        #expect(abs(CanvasRatio.polaroidMini.aspectRatio(isLandscape: false) - (54.0 / 86.0)) < eps)
+        #expect(abs(CanvasRatio.polaroidSquare.aspectRatio(isLandscape: false) - (72.0 / 86.0)) < eps)
+        #expect(abs(CanvasRatio.polaroidWide.aspectRatio(isLandscape: true) - (108.0 / 86.0)) < eps)
         
         // Target canvas dimensions
         let bounds = CanvasRatio.ig4x5.targetPixelSize(baseWidth: 1080)
