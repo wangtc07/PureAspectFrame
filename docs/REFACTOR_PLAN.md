@@ -882,15 +882,15 @@ flowchart TD
 
 只動 `HomeView`，不讀 `FrameScene`，先讓使用者看到首頁變乾淨。
 
-- [ ] **Q1** 卡片純圖化（C1-1）：移除外框、背景、圓角、「已存圖／僅設定」標籤、相機與日期文字；3 欄（iPad 自適應）正方格、間距 2pt、`scaledToFit`；首頁背景改 `systemGroupedBackground`。— 驗收：UI test：卡片內不存在文字元素；截圖比對。
+- [x] **Q1** 卡片純圖化（C1-1）：移除外框、背景、圓角、「已存圖／僅設定」標籤、相機與日期文字；3 欄（iPad 自適應）正方格、間距 2pt、`scaledToFit`；首頁背景改 `systemGroupedBackground`。— 驗收：UI test：卡片內不存在文字元素；截圖比對。
 
 > 註解：N8｜**衝突**：C1「純圖化、移除背景」＋Photos 基準（正方形裁切縮圖）與本 App 的作品本質衝突：Photos 式正方形裁切會切掉作品的白框（作品最重要的部分）；而不裁切又無背景時，白框作品在白色頁面上會「融化」看不出邊界。**建議**：正方格內 `scaledToFit` 顯示完整作品（同 Photos「長寬比格線」選項），頁面背景用 `systemGroupedBackground`（淺灰 #F2F2F7），白框自然可辨；格子本身無任何裝飾。**決策問題**：接受頁面改淺灰底嗎？或你要 Photos 預設的正方形裁切（看不到完整白框）？
 
-- [ ] **Q2** 點選零延遲無閃爍（C1-2，K20）：選取切換不包 `withAnimation`，勾勾無 `.transition(.scale)`，底部列移除 `.animation(.spring, value: isSelectMode)`；格子不用 interactive glass（`glassEffect(.regular.interactive())` 就是按壓時的 Z 軸浮起）；保留選取觸覺回饋。— 驗收：UI test：點選後同一 runloop 內勾勾元素存在；實機錄影 120fps 無縮放動畫影格。
+- [x] **Q2** 點選零延遲無閃爍（C1-2，K20）：選取切換不包 `withAnimation`，勾勾無 `.transition(.scale)`，底部列移除 `.animation(.spring, value: isSelectMode)`；格子不用 interactive glass（`glassEffect(.regular.interactive())` 就是按壓時的 Z 軸浮起）；保留選取觸覺回饋。— 驗收：UI test：點選後同一 runloop 內勾勾元素存在；實機錄影 120fps 無縮放動畫影格。
 
 > 註解：N26｜**衝突**：C1-2 要「移除全局 spring 動畫與 Z 軸位移」，C1-3 又要選擇膠囊「自然融合」（本身就是動畫）；而「Z 軸位移」在程式碼中其實是卡片的 `.liquidGlass(cornerRadius: 16)` 預設 `interactive: true`（K20）。**建議**：只移除「選取切換」與「卡片按壓」的動畫；模式切換時頂部膠囊的玻璃融合動畫保留。**決策問題**：同意「選取＝無動畫、進出選擇模式＝有融合動畫」的區分嗎？
 
-- [ ] **Q3** 「選擇」膠囊融合（C1-3）：右上兩顆鈕放在同一 `GlassEffectContainer`，以 `glassEffectID` + `@Namespace` 讓「⚙︎ ↔ 全選」「選擇 ↔ ✕」互相變形；固定基準高度 44、最小寬度固定，避免文字長度造成跳動。iOS 26 及以上才做玻璃變形；iPadOS 17 兩顆鈕用系統材質、不變形，位置與功能相同（§16.11）。— 驗收：iOS 26 實機錄影：進出選擇模式時兩顆玻璃連續變形、無瞬移。iPadOS 17：兩顆鈕可點，不因缺少 `glassEffect` 而空白。
+- [x] **Q3** 「選擇」膠囊融合（C1-3）：右上兩顆鈕放在同一 `GlassEffectContainer`，以 `glassEffectID` + `@Namespace` 讓「⚙︎ ↔ 全選」「選擇 ↔ ✕」互相變形；固定基準高度 44、最小寬度固定，避免文字長度造成跳動。iOS 26 及以上才做玻璃變形；iPadOS 17 兩顆鈕用系統材質、不變形，位置與功能相同（§16.11）。— 驗收：iOS 26 實機錄影：進出選擇模式時兩顆玻璃連續變形、無瞬移。iPadOS 17：兩顆鈕可點，不因缺少 `glassEffect` 而空白。
 
 ### Phase Z：清理與防護網（5 項）
 
@@ -1040,11 +1040,11 @@ flowchart TD
 
 > 註解：N14｜**衝突**：「僅保留設定」的作品要重新開啟，需要原圖；但以 asset id 取原圖必須有相簿讀取授權，而 `PhotosPicker` 的設計正是「不需要授權」（K16）。**建議**：每件作品都存一份長邊 2048 的 HEIC 代理圖（約 0.5MB），重新開啟與 SNS 分享不需要授權；只有「原始尺寸」分享才以 asset id 取原圖，此時才請求授權，拒絕則提示並改用代理圖可達的最大尺寸。設定頁「僅保留設定」的說明據實調整（不再宣稱「節省 98%」）。**決策問題**：接受每件作品多存約 0.5MB 嗎？或你偏好首次啟動就請求相簿權限？
 
-- [ ] **H8** 首頁冗餘文字：移除頂部「N 個項目 · 已用 X MB」膠囊（用量只留在設定）、空狀態教學句「選取相片開始自由裁切…」、「(Leica M11 樣張)」；空狀態保留圖示＋「尚未有任何作品」＋「載入示範相片」一顆。— 驗收：UI test：上述字串不存在。
+- [x] **H8** 首頁冗餘文字：移除頂部「N 個項目 · 已用 X MB」膠囊（用量只留在設定）、空狀態教學句「選取相片開始自由裁切…」、「(Leica M11 樣張)」；空狀態保留圖示＋「尚未有任何作品」＋「載入示範相片」一顆。— 驗收：UI test：上述字串不存在。
 
 > 註解：N31｜**衝突**：「UI 自我說明、不需冗餘文字」與首頁右下兩顆**無標籤**的匯入圖示（⚡ 快速套用、＋ 編輯）——⚡ 的意義無法從圖示推知（grounding：unlabeled real import icons）。**建議**：維持圖示（commit 09bb84b 的決定），但兩顆都加 `accessibilityLabel` 並在長按時顯示系統 `.help`／`contextMenu` 標題；或合併成一顆「＋」，選完相片一律先到快速套用（再一鍵「編輯」）。**決策問題**：保留兩顆圖示鈕，還是合併為一顆？
 
-- [ ] **H9** 首頁選擇模式文案與尺寸統一：「已選取 N 張」、選取鈕與底部圓鈕 44pt、✕ 的 a11y 標「結束選擇」。— 驗收：單元測試 `selectionStatusText(count: 6) == "已選取 6 張"`；UI test：底部圓鈕 frame 44×44。
+- [x] **H9** 首頁選擇模式文案與尺寸統一：「已選取 N 張」、選取鈕與底部圓鈕 44pt、✕ 的 a11y 標「結束選擇」。— 驗收：單元測試 `selectionStatusText(count: 6) == "已選取 6 張"`；UI test：底部圓鈕 frame 44×44。
 
 ### Phase U：全域一致性（9 項）
 
